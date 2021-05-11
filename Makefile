@@ -27,9 +27,11 @@ server_storage.o:
 icl_hash.o:
 	gcc -c server/src/icl_hash.c -o build/obj/$@
 
-
 start:
 	build/server
+
+commit:
+	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
 	
 
