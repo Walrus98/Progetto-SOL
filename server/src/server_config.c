@@ -51,6 +51,7 @@ void get_file_config() {
                 continue;
             } 
             fprintf(stderr, "ERRORE: storage_file_capacity vuole un intero!");
+            exit(EXIT_FAILURE);
         }
 
         // Confronto il nome della stringa con il nome della configurazione
@@ -62,6 +63,7 @@ void get_file_config() {
                 continue;
             } 
             fprintf(stderr, "ERRORE: storage_capacity vuole un intero!");
+            exit(EXIT_FAILURE);
         }
 
         // Confronto il nome della stringa con il nome della configurazione
@@ -73,6 +75,7 @@ void get_file_config() {
                 continue;
             } 
             fprintf(stderr, "ERRORE: thread_workers_amount vuole un intero!");
+            exit(EXIT_FAILURE);
         }
 
         // // Confronto il nome della stringa con il nome della configurazione
@@ -91,6 +94,7 @@ void get_file_config() {
         //     fprintf(stderr, "ERRORE: mb_cache_size vuole un intero!");
         // }
     }
+    printf("\n");
 
     
     // Chiudo il descrittore del file

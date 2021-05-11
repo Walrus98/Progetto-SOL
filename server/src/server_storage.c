@@ -5,6 +5,21 @@
 
 #include "../include/server_storage.h"
 #include "../include/icl_hash.h"
+// #include "../include/utils_list.h"
+
+struct File {
+    char *filePath;
+    char *fileContent;
+    size_t fileSize;
+    unsigned int modified;
+};
+typedef struct File File;
+
+struct Node {
+    char *filePath;
+    struct Node *next;
+};
+typedef struct Node Node;
 
 static size_t STORAGE_FILE_CAPACITY;
 static size_t STORAGE_CAPACITY;
@@ -12,152 +27,94 @@ static size_t STORAGE_CAPACITY;
 static size_t CURRENT_FILE_AMOUNT = 0;
 static size_t CURRENT_STORAGE_SIZE = 0;
 
-static icl_hash_t *hashTable;
+static icl_hash_t *storage;
+static Node *cache;
 
-void create_file_storage(size_t fileCapacity, size_t storageCapacity) {
+// =============== LISTA ===============
+
+void pop_cache(Node **list) {
+    if (*list != NULL) {
+        Node *tempNode = *list;
+        *list = (*list)->next;
+        free(tempNode);
+    }
+}
+
+void destroy_cache(Node **list) {
+    while (*list != NULL) pop_cache(list);
+}
+
+Node *insert_cache(char *filePath) {
+    Node *newElement = (Node *) malloc(sizeof(Node));
+    newElement->filePath = filePath;
+    newElement->next = NULL;
+
+    Node *currentList = cache;
+    while (currentList->next != NULL) {
+        Node *temp = currentList;
+        currentList = currentList->next;
+        free(temp);
+    }
+    currentList->next = newElement;
+
+
+    // destroy_cache(&currentList);
+
+
+    return newElement;    
+}
+
+
+
+// =============== TABELLA HASH ===============
+
+void create_storage(size_t fileCapacity, size_t storageCapacity) {
     STORAGE_FILE_CAPACITY = fileCapacity;
     STORAGE_CAPACITY = storageCapacity;
 
-    hashTable = icl_hash_create(fileCapacity, NULL, NULL);
+    storage = icl_hash_create(fileCapacity, NULL, NULL);
+    // add_tail(&list, Node);
 }
 
-void insert_file_storage(char *fileName, char *fileContent, size_t fileSize) {
+void insert_storage(char *fileName, char *fileContent) {
 
     File *file;
     if ((file = (File *) malloc(sizeof(File))) == NULL) {
         perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del file");
         exit(errno);
     }
-    char *fileTempName;
-    if ((fileName = (char *) malloc(sizeof(char *))) == NULL) {
-        perror("ERRORE: impossibile allocare la memoria richiesta per il nome file");
-        exit(errno);
-    }
-    char *fileTempContent;
-    if ((fileContent = (char *) malloc(sizeof(char *))) == NULL) {
-        perror("ERRORE: impossibile allocare la memoria richiesta per la descrizione del file");
-        exit(errno);
-    }
+
+    file->filePath = fileName;
+    file->fileContent = fileContent;
+    file->fileSize = strlen(fileName) + strlen(fileContent) + sizeof(size_t) + sizeof(unsigned int);
 
     if (CURRENT_FILE_AMOUNT > STORAGE_FILE_CAPACITY) {
         fprintf(stderr, "ERRORE: raggiunto il numero di File massimi");
         exit(EXIT_FAILURE);
     }
 
-    if (CURRENT_STORAGE_SIZE + sizeof(file) > STORAGE_CAPACITY) {
+    if (CURRENT_STORAGE_SIZE + file->fileSize > STORAGE_CAPACITY) {
         fprintf(stderr, "ERRORE: raggiunta la dimensione massima del File Storage");
         exit(EXIT_FAILURE);
     }
 
-    strncmp(file->fileName, fileTempName, 256);
-    strncmp(file->fileContent, fileTempContent, 2048);
-    file->fileSize = fileSize;
-
-    icl_hash_insert(hashTable, file->fileName, &file);
+    icl_hash_insert(storage, file->filePath, &file);
+    insert_cache(file->filePath);
 
     CURRENT_FILE_AMOUNT++;
-    CURRENT_STORAGE_SIZE += sizeof(file);
+    CURRENT_STORAGE_SIZE += file->fileSize;
+
+    free(file);
 }
 
+void destroy_storage() {
+    icl_hash_destroy(storage, NULL, NULL);
+    destroy_cache(&cache);
+}
 
-// static size_t STORAGE_FILE_CAPACITY;
-// static size_t STORAGE_CAPACITY;
+void print_storage() {
+    icl_hash_dump(stdout, storage);
 
-// struct FileEntry {
-// 	int info;
-// 	struct FileEntry *next;
-// };
-// typedef struct FileEntry FileEntry;
-
-// static FileEntry **fileStorage;
-
-// void create_file_storage(size_t fileCapacity, size_t storageCapacity) {
-
-//     if ((fileStorage = (FileEntry **) malloc(storageCapacity)) == NULL) {
-//         perror("ERRORE: impossibile allocare la memoria richiesta per il server_storage");
-//         exit(errno);
-//     }
-//     for (int i = 0; i < fileCapacity; i++) {
-//         fileStorage[i] = NULL;
-//     }
-
-//     STORAGE_FILE_CAPACITY = fileCapacity;
-//     STORAGE_CAPACITY = storageCapacity;
-// }
-
-// int toHash(int x) {
-//     return x % 10;
-// }
-
-// void push_file_storage(int value) {
-
-//     if (CURRENT_FILE_AMOUNT > STORAGE_FILE_CAPACITY) {
-//         fprintf(stderr, "ERRORE: raggiunto il numero di File massimi");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     if (CURRENT_STORAGE_SIZE + sizeof(FileEntry) > STORAGE_CAPACITY) {
-//         fprintf(stderr, "ERRORE: raggiunta la dimensione massima del File Storage");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     // Applico la funzione di hashing
-//     int hashedValue = toHash(value);
-
-//     // Creo l'elemento e lo inserisco nella tabella hash
-//     FileEntry *nuovoElemento;    
-//     if ((nuovoElemento = (FileEntry *) malloc(sizeof(FileEntry))) == NULL) {
-//         perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del nuovo File");
-//         exit(errno);
-//     }
-//     nuovoElemento->next = fileStorage[hashedValue];
-//     nuovoElemento->info = value;
-//     fileStorage[hashedValue] = nuovoElemento;
-
-//     CURRENT_FILE_AMOUNT++;
-//     CURRENT_STORAGE_SIZE += sizeof(FileEntry);
-// }
-
-// void pop_file_storage(int value) {
-
-// }
-
-// void print_file_entries(FileEntry *fileEntries) {
-//     for (; fileEntries != NULL; fileEntries = fileEntries->next) {
-//         printf("[%d] -> ", fileEntries->info);
-//     }
-//     printf("[ ]");
-// }
-
-// void print_file_storage() {
-//     for (int i = 0; i < STORAGE_FILE_CAPACITY; i++) {
-//         print_file_entries(fileStorage[i]);
-//         printf("\n");
-//     }    
-
-//     printf("Numero di File inseriti: %ld\n", CURRENT_FILE_AMOUNT);
-//     printf("Dimensione del FileStorage: %ld byte\n", CURRENT_STORAGE_SIZE);
-// }
-
-// void aggiungi_testa(ElementoLista **lista, int valore) {
-// 	ElementoLista *nuovoElemento = malloc(sizeof(ElementoLista));
-// 	nuovoElemento->info = valore;
-// 	nuovoElemento->next = *lista;
-// 	*lista = nuovoElemento;
-// }
-// void aggiungi_coda(ElementoLista **lista, int valore) {
-// 	ElementoLista *nuovoElemento = malloc(sizeof(ElementoLista));
-// 	nuovoElemento->info = valore;
-// 	nuovoElemento->next = NULL;
-	
-// 	if (*lista == NULL) {
-// 		*lista = nuovoElemento;
-// 	} else {
-// 		ElementoLista *currentElemento = *lista;
-//         for(; currentElemento->next != NULL; currentElemento = currentElemento->next);
-// 		currentElemento->next = nuovoElemento;
-// 	}
-// }
-
-
-
+    printf("CURRENT_FILE_AMOUNT %ld\n", CURRENT_FILE_AMOUNT);
+    printf("CURRENT_STORAGE_SIZE %ld\n", CURRENT_STORAGE_SIZE);
+}

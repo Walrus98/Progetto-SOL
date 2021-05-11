@@ -10,7 +10,9 @@ TARGETS		= server.o server_config.o utils.o server_storage.o  icl_hash.o
 
 server: $(TARGETS)
 	gcc build/obj/*.o -o build/server
-	build/server
+	cp -r * /mnt/d/Desktop/Progetto-SOL/
+#build/server
+	valgrind build/server –-leak-check=full
 
 server.o:
 	gcc -c server/src/server.c -o build/obj/$@
@@ -32,6 +34,9 @@ start:
 
 commit:
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
+
+valgrind:
+	valgrind build/server –-leak-check=full
 
 	
 
