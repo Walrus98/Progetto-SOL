@@ -1,4 +1,4 @@
-storage_file_capacity: 2
-storage_capacity: 100
+storage_file_capacity: 10
+storage_capacity: 2048
 thread_workers_amount: 5
 socket_file_name: tmp

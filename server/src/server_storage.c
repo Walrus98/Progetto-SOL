@@ -69,37 +69,55 @@ void insert_storage(char *filePath, char *fileContent) {
     file->fileContent = fileContent;
     file->fileSize = fileSize;
 
-    // se il file non è presente nella cache
+    // Se il file non è presente nella cache
     if (get_node(cache, file->filePath) == NULL) {
         // Inersico il file nella tabella hash
-        icl_hash_insert(storage, file->filePath, file->fileContent); //&file TODO
+        icl_hash_insert(storage, file->filePath, file);
         // Inserisco il filePath nella cache
         insert_cache(&cache, file->filePath);
-    } else {
-//  * @param ht -- the hash table
-//  * @param key -- the key of the new item
-//  * @param data -- pointer to the new item's data
-//  * @param olddata -- pointer to the old item's data (set upon return)
-        // icl_hash_update_insert(storage, file->filePath, file->fileContent, );
 
-        // update_cache();
+        // Aumento il contatore del numero dei file
+        CURRENT_FILE_AMOUNT++;
+        // Aumento la dimensione della struttura dati
+        CURRENT_STORAGE_SIZE += file->fileSize;
+    // Se il file è gia presente nella cache
+    } else {
+        // Prendo il riferimento al puntatore del File che è memorizzato nello storage
+        File *oldFile = (File *) icl_hash_find(storage, file->filePath); 
+
+        // Rimuovo il vecchio File dallo storage
+        icl_hash_delete(storage, oldFile->filePath, NULL, NULL);
+        // Inserisco il nuovo File con i valori aggiornati nello storage
+        icl_hash_insert(storage, file->filePath, file);
+
+        // Aggiorno la memoria attualmente occupata 
+        CURRENT_STORAGE_SIZE -= oldFile->fileSize;
+        CURRENT_STORAGE_SIZE += file->fileSize;
+
+        File *newFile = (File *) icl_hash_find(storage, file->filePath);        
+        printf("PATH %s \n", newFile->filePath);
+        printf("CONTENT %s \n", newFile->fileContent);
     }
 
+    // free(file);
+}
 
-    // Aumento il contatore del numero dei file
-    CURRENT_FILE_AMOUNT++;
-    // Aumento la dimensione della struttura dati
-    CURRENT_STORAGE_SIZE += file->fileSize;
 
-    free(file);
+void free_key(void *key) {
+    // free((char *) key);
+}
+
+void free_data(void *data) {
+    free((File *) data);
 }
 
 void destroy_storage() {
-    icl_hash_destroy(storage, NULL, NULL);
+    printf("SUCCHIAMI IL CAZZO %d\n", icl_hash_destroy(storage, free_key, free_key));
     destroy_cache(&cache);
 }
 
 void print_storage() {
+
     icl_hash_dump(stdout, storage);
     print_cache(cache);
 
