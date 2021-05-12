@@ -16,13 +16,12 @@ int main(void) {
     // Creo il server storage
     create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY);
 
-    insert_storage("Pippo.txt", "asdsadsasa");
-    // insert_storage("Samu.txt", "");
-    // insert_storage("test.txt", "Ciao!");
-    // insert_storage("sadsa.txt", "Ciao!");
+    insert_storage("sdsasasadsaas", "asdsadsasa");
+    insert_storage("Samu.txt", "Peni");
+    insert_storage("test.txt", "Ciao!");
+    insert_storage("sadsa.txt", "Ciao!");
     
-    // print_file_storage();
-
+    print_storage();
     destroy_storage();
       
     return EXIT_SUCCESS;

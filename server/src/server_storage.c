@@ -4,23 +4,18 @@
 #include <errno.h>
 
 #include "../include/server_storage.h"
+#include "../include/server_cache.h"
 #include "../include/icl_hash.h"
-// #include "../include/utils_list.h"
 
-struct File {
+// Struttura dati che descrive il File in memoria
+typedef struct File {
     char *filePath;
     char *fileContent;
     size_t fileSize;
     unsigned int modified;
-};
-typedef struct File File;
+} File;
 
-struct Node {
-    char *filePath;
-    struct Node *next;
-};
-typedef struct Node Node;
-
+// Capacità massima del server storage
 static size_t STORAGE_FILE_CAPACITY;
 static size_t STORAGE_CAPACITY;
 
@@ -28,80 +23,51 @@ static size_t CURRENT_FILE_AMOUNT = 0;
 static size_t CURRENT_STORAGE_SIZE = 0;
 
 static icl_hash_t *storage;
-static Node *cache;
-
-// =============== LISTA ===============
-
-void pop_cache(Node **list) {
-    if (*list != NULL) {
-        Node *tempNode = *list;
-        *list = (*list)->next;
-        free(tempNode);
-    }
-}
-
-void destroy_cache(Node **list) {
-    while (*list != NULL) pop_cache(list);
-}
-
-Node *insert_cache(char *filePath) {
-    Node *newElement = (Node *) malloc(sizeof(Node));
-    newElement->filePath = filePath;
-    newElement->next = NULL;
-
-    Node *currentList = cache;
-    while (currentList->next != NULL) {
-        Node *temp = currentList;
-        currentList = currentList->next;
-        free(temp);
-    }
-    currentList->next = newElement;
-
-
-    // destroy_cache(&currentList);
-
-
-    return newElement;    
-}
-
-
-
-// =============== TABELLA HASH ===============
+static Cache cache;
 
 void create_storage(size_t fileCapacity, size_t storageCapacity) {
     STORAGE_FILE_CAPACITY = fileCapacity;
     STORAGE_CAPACITY = storageCapacity;
 
     storage = icl_hash_create(fileCapacity, NULL, NULL);
-    // add_tail(&list, Node);
 }
 
-void insert_storage(char *fileName, char *fileContent) {
+void insert_storage(char *filePath, char *fileContent) {
 
-    File *file;
-    if ((file = (File *) malloc(sizeof(File))) == NULL) {
-        perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del file");
-        exit(errno);
-    }
+    // Calcolo la dimensione del file
+    size_t fileSize = strlen(filePath) + strlen(fileContent) + sizeof(size_t) + sizeof(unsigned int);
 
-    file->filePath = fileName;
-    file->fileContent = fileContent;
-    file->fileSize = strlen(fileName) + strlen(fileContent) + sizeof(size_t) + sizeof(unsigned int);
-
+    // Se il numero di file caricati sul server storage è maggiore della capacità massima, allora applico la politica di rimpiazzamento
     if (CURRENT_FILE_AMOUNT > STORAGE_FILE_CAPACITY) {
         fprintf(stderr, "ERRORE: raggiunto il numero di File massimi");
         exit(EXIT_FAILURE);
     }
 
-    if (CURRENT_STORAGE_SIZE + file->fileSize > STORAGE_CAPACITY) {
+    // Se la dimensione corrente + quella del file che sto andando a caricare supera la capacità massima, allora applico la politica di rimpiazzamtno
+    if (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
         fprintf(stderr, "ERRORE: raggiunta la dimensione massima del File Storage");
         exit(EXIT_FAILURE);
     }
 
-    icl_hash_insert(storage, file->filePath, &file);
-    insert_cache(file->filePath);
+    // Alloco la memoria necessaria per la creazione di un File
+    File *file;
+    if ((file = (File *) malloc(sizeof(File))) == NULL) {
+        perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del file");
+        exit(errno);
+    }
+    // Assegno al file creato il percorso, il contenuto passato e la dimensione
+    file->filePath = filePath;
+    file->fileContent = fileContent;
+    file->fileSize = fileSize;
 
+    // Inersico il file nella tabella hash
+    icl_hash_insert(storage, file->filePath, &file);
+    // Inserisco il filePath nella cache
+    insert_cache(&cache, file->filePath);
+
+    // Aumento il contatore del numero dei file
     CURRENT_FILE_AMOUNT++;
+    // Aumento la dimensione della struttura dati
     CURRENT_STORAGE_SIZE += file->fileSize;
 
     free(file);
@@ -114,7 +80,10 @@ void destroy_storage() {
 
 void print_storage() {
     icl_hash_dump(stdout, storage);
+    print_cache(cache);
 
     printf("CURRENT_FILE_AMOUNT %ld\n", CURRENT_FILE_AMOUNT);
     printf("CURRENT_STORAGE_SIZE %ld\n", CURRENT_STORAGE_SIZE);
+
+    printf("\n");
 }

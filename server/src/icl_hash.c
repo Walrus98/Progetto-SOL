@@ -299,14 +299,17 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
 
     if(!ht) return -1;
 
+    printf("==== Storage Table ====\n");
+
     for(i=0; i<ht->nbuckets; i++) {
         bucket = ht->buckets[i];
         for(curr=bucket; curr!=NULL; ) {
             if(curr->key)
-                fprintf(stream, "icl_hash_dump: %s: %p\n", (char *)curr->key, curr->data);
+                fprintf(stream, "%s -> %p\n", (char *)curr->key, curr->data);
             curr=curr->next;
         }
-    }
+    } 
+    printf("\n");
 
     return 0;
 }
