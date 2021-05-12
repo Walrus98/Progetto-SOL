@@ -12,7 +12,9 @@ void insert_cache(Node **cache, char *filePath);
 
 void destroy_cache(Node **cache);
 
-void pop_cache(Node **cache);
+char *pop_cache(Node **cache);
+
+Node *get_node(Node *cache, char *filePath);
 
 void print_cache(Node *cache);
 

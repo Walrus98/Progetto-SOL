@@ -238,7 +238,7 @@ int icl_hash_delete(icl_hash_t *ht, void* key, void (*free_key)(void*), void (*f
             }
             if (*free_key && curr->key) (*free_key)(curr->key);
             if (*free_data && curr->data) (*free_data)(curr->data);
-            ht->nentries++;
+            ht->nentries--; // Modificato ++ con --
             free(curr);
             return 0;
         }
@@ -305,7 +305,7 @@ icl_hash_dump(FILE* stream, icl_hash_t* ht)
         bucket = ht->buckets[i];
         for(curr=bucket; curr!=NULL; ) {
             if(curr->key)
-                fprintf(stream, "%s -> %p\n", (char *)curr->key, curr->data);
+                fprintf(stream, "%s -> %s\n", (char *)curr->key, (char *) curr->data); //TODO
             curr=curr->next;
         }
     } 
