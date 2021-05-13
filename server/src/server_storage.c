@@ -7,6 +7,14 @@
 #include "../include/server_cache_handler.h"
 #include "../include/icl_hash.h"
 
+// Struttura dati che descrive il File in memoria
+typedef struct File {
+    char *filePath;
+    char *fileContent;
+    size_t fileSize;
+    unsigned int modified;
+} File;
+
 // Capacità massima del server storage
 static size_t STORAGE_FILE_CAPACITY;
 static size_t STORAGE_CAPACITY;
@@ -36,14 +44,22 @@ void insert_storage(char *filePath, char *fileContent) {
     }
     // Se il numero di file caricati sul server storage è maggiore della capacità massima, allora applico la politica di rimpiazzamento
     if (CURRENT_FILE_AMOUNT + 1 > STORAGE_FILE_CAPACITY) {
-        fprintf(stderr, "ATTENZIONE: raggiunta il massimo numero di File nello Storage. Applico politica FIFO\n");
-        replacement_file_cache(storage);
+        fprintf(stderr, "ATTENZIONE: raggiunta il massimo numero di File nello Storage.\n");
+        
+        char *fileToRemove = replacement_file_cache();
+
+        icl_hash_delete(storage, fileToRemove, NULL, free);
+        fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", filePath);
     }
 
     // Se la dimensione corrente + quella del file che sto andando a caricare supera la capacità massima, allora applico la politica di rimpiazzamtno
     while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
-        fprintf(stderr, "ATTENZIONE: raggiunta la dimensione massima dello Storage. Applico politica FIFO\n");
-        replacement_file_cache(storage);
+        fprintf(stderr, "ATTENZIONE: raggiunta la dimensione massima dello Storage.\n");
+        
+        char *fileToRemove = replacement_file_cache();
+
+        icl_hash_delete(storage, fileToRemove, NULL, free);
+        fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", filePath);
     }
 
     // Alloco la memoria necessaria per la creazione di un File
@@ -58,11 +74,11 @@ void insert_storage(char *filePath, char *fileContent) {
     file->fileSize = fileSize;
 
     // Se il file non è presente nella cache
-    if (get_file_cache(file) == 0) {
+    if (contains_file_cache(file->filePath) == 0) {
         // Inersico il file nella tabella hash
         icl_hash_insert(storage, file->filePath, file);
         // Inserisco il file nella cache
-        inset_file_cache(file);
+        insert_file_cache(file->filePath);
 
         // Aumento il contatore del numero dei file
         CURRENT_FILE_AMOUNT++;
@@ -82,7 +98,7 @@ void insert_storage(char *filePath, char *fileContent) {
         // Inserisco il nuovo File con i valori aggiornati nello storage
         icl_hash_insert(storage, file->filePath, file);
         // Aggiorno la cache con il File modificato
-        insert_update_file_cache(file);
+        insert_update_file_cache(file->filePath);
 
         // Aggiorno la memoria attualmente occupata 
         CURRENT_STORAGE_SIZE += file->fileSize;

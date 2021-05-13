@@ -1,23 +1,23 @@
 #ifndef SERVER_CACHE_FIFO_H
 #define SERVER_CACHE_FIFO_H
 
-struct Node {
+struct NodeFIFO {
     char *filePath;
-    struct Node *next;
+    struct NodeFIFO *next;
 };
-typedef struct Node Node;
-typedef Node *CacheFIFO;
+typedef struct NodeFIFO NodeFIFO;
+typedef NodeFIFO *CacheFIFO;
 
-void insert_fifo(Node **cache, char *filePath);
+void insert_fifo(NodeFIFO **cache, char *filePath);
 
-void insert_update_fifo(Node **cache, char *filePath);
+void insert_update_fifo(NodeFIFO **cache, char *filePath);
 
-char *pop_fifo(Node **cache);
+char *pop_fifo(NodeFIFO **cache);
 
-int get_fifo(Node *cache, char *filePath);
+int get_fifo(NodeFIFO *cache, char *filePath);
 
-void destroy_fifo(Node **cache);
+void destroy_fifo(NodeFIFO **cache);
 
-void print_fifo(Node *cache);
+void print_fifo(NodeFIFO *cache);
 
 #endif

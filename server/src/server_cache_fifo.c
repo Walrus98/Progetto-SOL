@@ -5,6 +5,8 @@
 
 #include "../include/server_cache_fifo.h"
 
+typedef NodeFIFO Node;
+
 #define STRING_BUFFER_SIZE 512
 
 void insert_fifo(Node **cache, char *filePath) {
