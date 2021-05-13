@@ -10,9 +10,11 @@ typedef Node *Cache;
 
 void insert_cache(Node **cache, char *filePath);
 
-void destroy_cache(Node **cache);
-
 char *pop_cache(Node **cache);
+
+void insert_update_cache(Node **cache, char *filePath);
+
+void destroy_cache(Node **cache);
 
 Node *get_node(Node *cache, char *filePath);
 

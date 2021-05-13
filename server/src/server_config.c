@@ -67,6 +67,18 @@ void get_file_config() {
         }
 
         // Confronto il nome della stringa con il nome della configurazione
+        if (strcmp(buffer, "replacement_policy") == 0) {
+            // Se il valore passato dal config è un numero
+            if (isNumber(configValue, &size)) {
+                // Assegno il valore alla variabile globale
+                REPLACEMENT_POLICY = (int) size;
+                continue;
+            } 
+            fprintf(stderr, "ERRORE: storage_capacity vuole un intero!");
+            exit(EXIT_FAILURE);
+        }
+
+        // Confronto il nome della stringa con il nome della configurazione
         if (strcmp(buffer, "thread_workers_amount") == 0) {
             // Se il valore passato dal config è un numero
             if (isNumber(configValue, &size)) {

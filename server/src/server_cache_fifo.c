@@ -3,11 +3,11 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../include/server_cache.h"
+#include "../include/server_cache_fifo.h"
 
 #define STRING_BUFFER_SIZE 512
 
-void insert_cache(Node **cache, char *filePath) {
+void insert_fifo(Node **cache, char *filePath) {
 	Node *newNode;
 	if ((newNode = (Node *) malloc(sizeof(Node))) == NULL) {
         perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del nodo in Cache");
@@ -25,7 +25,7 @@ void insert_cache(Node **cache, char *filePath) {
 	}
 }
 
-char *pop_cache(Node **cache) {
+char *pop_fifo(Node **cache) {
 	char *filePath;
     if (*cache != NULL) {
         Node *tempNode = *cache;
@@ -36,7 +36,7 @@ char *pop_cache(Node **cache) {
 	return filePath;
 }
 
-void remove_node(Node **cache, char *filePath) {
+void remove_fifo(Node **cache, char *filePath) {
 	if (*cache != NULL) {
 		Node *currentCache = *cache;
 		Node *precNode = NULL;
@@ -59,45 +59,29 @@ void remove_node(Node **cache, char *filePath) {
 			currentCache = currentCache->next;
 		}
 	}
-
-		// while (currentCache != NULL) {
-		// 	if (strncmp(currentCache->filePath, filePath, STRING_BUFFER_SIZE) == 0) {
-		// 		if (precNode == NULL) {
-		// 			*cache = (*cache)->next;
-		// 			currentCache = *cache;
-		// 		} else {
-		// 			precNode->next = currentCache->next;
-		// 			currentCache = currentCache->next;
-		// 		}
-		// 	} else {
-		// 		precNode = currentCache;
-		// 		currentCache = currentCache->next;
-		// 	}
 }
 
-void insert_update_cache(Node **cache, char *filePath) {
-	remove_node(cache, filePath);
-	insert_cache(cache, filePath);
+void insert_update_fifo(Node **cache, char *filePath) {
+	remove_fifo(cache, filePath);
+	insert_fifo(cache, filePath);
 }
 
-Node *get_node(Node *cache, char *filePath) {
+int get_fifo(Node *cache, char *filePath) {
 	for (; cache != NULL; cache = cache->next) {
 		if (strncmp(filePath, cache->filePath, STRING_BUFFER_SIZE) == 0) {
-			return cache;
+			return 1;
 		}
 	}
-	return NULL;
+	return 0;
 }
 
-void destroy_cache(Node **cache) {
-    while (*cache != NULL) pop_cache(cache);
+void destroy_fifo(Node **cache) {
+    while (*cache != NULL) pop_fifo(cache);
 }
 
-
-
-void print_cache(Node *cache) {
+void print_fifo(Node *cache) {
 	
-    printf("==== Cache List ====\n");
+    printf("==== Cache FIFO List ====\n");
 
 	for (; cache != NULL; cache=cache->next) {
 		printf("%s -> ", cache->filePath);

@@ -6,14 +6,6 @@
 #include "../include/server_config.h"
 #include "../include/server_storage.h"
 
-typedef struct File {
-    char *filePath;
-    char *fileContent;
-    size_t fileSize;
-    unsigned int modified;
-} File;
-
-
 int main(void) {
 
     printf("Avvio del server...\n\n");   
@@ -22,16 +14,14 @@ int main(void) {
     get_file_config();   
 
     // Creo il server storage
-    create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY);
+    create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY, REPLACEMENT_POLICY);
 
-    insert_storage("ciao.txt", "ciao!");
-    // insert_storage("culorosso.txt", "ciao222!");
-    // insert_storage("ciao.txt", "dasdsadsa!");
-
-    // insert_storage("ciao.txt", "bob!");
+    // insert_storage("ciao.txt", "messaggiodiprova");
+    // insert_storage("ciao.txt", "cambiato");
+    // insert_storage("prova.txt", "dddd");
     
-    print_storage();
-    destroy_storage();
+    // print_storage();
+    // destroy_storage();
       
     return EXIT_SUCCESS;
 }

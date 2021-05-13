@@ -3,7 +3,7 @@ CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 INCLUDES	= -I .
 
-TARGETS		= server.o server_config.o utils.o server_storage.o server_cache.o icl_hash.o
+TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o server_cache_fifo.o icl_hash.o
 
 .PHONY: all test clean $(TARGETS)
 .SUFFIXES: .c .h .o
@@ -11,7 +11,7 @@ TARGETS		= server.o server_config.o utils.o server_storage.o server_cache.o icl_
 server: $(TARGETS)
 	gcc build/obj/*.o -o build/server
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
-#build/server
+#	build/server
 	valgrind build/server –-leak-check=full
 
 server.o:
@@ -26,8 +26,11 @@ utils.o:
 server_storage.o:
 	gcc -c server/src/server_storage.c -o build/obj/$@
 
-server_cache.o:
-	gcc -c server/src/server_cache.c -o build/obj/$@
+server_cache_handler.o:
+	gcc -c server/src/server_cache_handler.c -o build/obj/$@
+
+server_cache_fifo.o:
+	gcc -c server/src/server_cache_fifo.c -o build/obj/$@
 
 icl_hash.o:
 	gcc -c server/src/icl_hash.c -o build/obj/$@
