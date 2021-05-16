@@ -24,12 +24,12 @@ static size_t CURRENT_STORAGE_SIZE = 0;
 
 static icl_hash_t *storage;
 
-void create_storage(size_t fileCapacity, size_t storageCapacity, int storagePolicy) {
+void create_storage(size_t fileCapacity, size_t storageCapacity, int replacementPolicy) {
     STORAGE_FILE_CAPACITY = fileCapacity;
     STORAGE_CAPACITY = storageCapacity;
 
     storage = icl_hash_create(fileCapacity, NULL, NULL);
-    inizialize_policy(storagePolicy);
+    inizialize_policy(replacementPolicy);
 }
 
 void insert_storage(char *filePath, char *fileContent) {

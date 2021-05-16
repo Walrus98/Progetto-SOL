@@ -3,29 +3,30 @@
 #include <string.h>
 #include <errno.h>
 
+#include "../include/list_utils.h"
 #include "../include/server_cache_lru.h"
 
-void insert_lru(NodeLRU **cache, char *filePath) {
+void insert_lru(Node **cache, LRU value) {
 
 }
 
-void insert_update_lru(NodeLRU **cache, char *filePath) {
+void insert_update_lru(Node **cache, LRU value) {
 
 }
 
-char *pop_lru(NodeLRU **cache) {
+char *pop_lru(Node **cache) {
 
 }
 
-int get_lru(NodeLRU *cache, char *filePath) {
+int contains_lru(Node *cache, LRU value) {
 
 }
 
-void destroy_lru(NodeLRU **cache) {
+void destroy_lru(Node **cache) {
 
 }
 
-void print_lru(NodeLRU *cache) {
+void print_lru(Node *cache) {
 
 }
 

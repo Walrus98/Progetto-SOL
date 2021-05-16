@@ -5,6 +5,7 @@
 
 #include "../include/server_config.h"
 #include "../include/server_storage.h"
+#include "../include/server_network.h"
 
 int main(void) {
 
@@ -19,8 +20,17 @@ int main(void) {
     insert_storage("ciao.txt", "messaggiodiprova");
     insert_storage("123213.txt", "cambiato");
     insert_storage("prova.txt", "dddd");
+
+    // Stabilisco la connessione
+    // establish_connection();
+
+
+    // insert_storage("ciao.txt", "messaggiodiprova");
+    // insert_storage("123213.txt", "cambiato");
+    // insert_storage("prova.txt", "dddd");
     
     // print_storage();
+
     destroy_storage();
       
     return EXIT_SUCCESS;

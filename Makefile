@@ -3,17 +3,18 @@ CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 INCLUDES	= -I .
 
-TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o server_cache_fifo.o icl_hash.o
+TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o server_cache_fifo.o list_utils.o icl_hash.o server_network.o
 
 .PHONY: all test clean $(TARGETS)
 .SUFFIXES: .c .h .o
 
 server: $(TARGETS)
-	gcc build/obj/*.o -o build/server
+	-rm mysock
+	gcc -pthread build/obj/*.o -o build/server
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
 	rm -R build/obj/*.o
 #	build/server
-	valgrind build/server –-leak-check=full
+	valgrind build/server –-leak-check=full --track-origins=yes --tool=memcheck
 
 server.o:
 	gcc -c server/src/server.c -o build/obj/$@
@@ -33,8 +34,14 @@ server_cache_handler.o:
 server_cache_fifo.o:
 	gcc -c server/src/server_cache_fifo.c -o build/obj/$@
 
+list_utils.o:
+	gcc -c server/src/list_utils.c -o build/obj/$@
+
 icl_hash.o:
 	gcc -c server/src/icl_hash.c -o build/obj/$@
+
+server_network.o:
+	gcc -pthread -c server/src/server_network.c -o build/obj/$@
 
 start:
 	build/server
