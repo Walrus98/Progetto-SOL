@@ -1,6 +1,6 @@
 #ifndef SERVER_NETWORK_H
 #define SERVER_NETWORK_H
 
-void establish_connection();
+void create_connection();
 
 #endif

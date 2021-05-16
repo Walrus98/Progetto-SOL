@@ -3,7 +3,7 @@ CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 INCLUDES	= -I .
 
-TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o server_cache_fifo.o list_utils.o icl_hash.o server_network.o
+TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o server_cache_fifo.o list_utils.o icl_hash.o server_network.o server_network_dispatcher.o server_network_worker.o server_packet_handler.o
 
 .PHONY: all test clean $(TARGETS)
 .SUFFIXES: .c .h .o
@@ -42,6 +42,15 @@ icl_hash.o:
 
 server_network.o:
 	gcc -pthread -c server/src/server_network.c -o build/obj/$@
+
+server_network_dispatcher.o:
+	gcc -c server/src/server_network_dispatcher.c -o build/obj/$@
+
+server_network_worker.o:
+	gcc -c server/src/server_network_worker.c -o build/obj/$@
+
+server_packet_handler.o:
+	gcc -pthread -c server/src/server_packet_handler.c -o build/obj/$@
 
 start:
 	build/server

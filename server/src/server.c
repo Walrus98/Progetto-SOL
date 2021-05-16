@@ -17,9 +17,12 @@ int main(void) {
     // Creo il server storage
     create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY, REPLACEMENT_POLICY);
 
-    insert_storage("ciao.txt", "messaggiodiprova");
-    insert_storage("123213.txt", "cambiato");
-    insert_storage("prova.txt", "dddd");
+    // Stabilisco la connessione con i client
+    create_connection();
+
+    // insert_storage("ciao.txt", "messaggiodiprova");
+    // insert_storage("123213.txt", "cambiato");
+    // insert_storage("prova.txt", "dddd");
 
     // Stabilisco la connessione
     // establish_connection();

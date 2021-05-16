@@ -3,7 +3,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../include/list_utils.h"
 #include "../include/server_cache_lru.h"
 
 void insert_lru(Node **cache, LRU value) {

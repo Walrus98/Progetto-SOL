@@ -45,37 +45,18 @@ void *remove_head(Node **list) {
 }
 
 void remove_value(Node **list, void *value, void (*fun_compare) (void *value1, void *value2, void *size)) {
-    	if (*list != NULL) {
-		Node *currentCache = *list;
-		Node *precNode = NULL;
-
-		while (currentCache != NULL) {
-			if (fun_compare == 0) {
-				if (precNode == NULL) {
-					Node *tempNode = *list;
-					*list = (*list)->next;
-					free(tempNode);
-					return;
-				} else {
-					Node *tempNode = *list;
-					precNode->next = currentCache->next;
-					free(tempNode);
-					return;
-				}
-			}
-			precNode = currentCache;
-			currentCache = currentCache->next;
-		}
-	}
 }
 
 int contains(Node *list, void *value,  void (*fun_compare) (void *value1, void *value2, void *size)) {
-    for (; list != NULL; list = list->next) {
-		if (fun_compare == 0) {
-			return 1;
-		}
-	}
 	return 0;
+}
+
+int size(Node *list) {
+	int index = 0;
+	for (; list != NULL; list = list->next) {
+		index++;
+	}
+	return index;
 }
 
 void clear_list(Node **list) {

@@ -3,7 +3,6 @@
 #include <string.h>
 #include <errno.h>
 
-#include "../include/list_utils.h"
 #include "../include/server_cache_fifo.h"
 
 #define STRING_BUFFER_SIZE 512
