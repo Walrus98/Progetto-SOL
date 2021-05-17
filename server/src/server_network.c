@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <pthread.h>
 
 #include "../include/pthread_utils.h"
@@ -8,18 +9,24 @@
 #include "../include/server_network_worker.h"
 
 static pthread_t create_thread_dispatcher();
-static void create_thread_pool(int poolSize);
+static pthread_t *create_thread_pool(size_t poolSize);
 
-void create_connection() {
+void create_connection(size_t poolSize) {
 
     pthread_t threadDispatcher = create_thread_dispatcher();
-    create_thread_pool(20);
+    pthread_t *threadWorker = create_thread_pool(poolSize);
 
     JOIN(threadDispatcher);
+
+    for (int i = 0; i < poolSize; i++) {
+        JOIN(threadWorker[i]);
+    }
+    free(threadWorker);
 }
 
 static pthread_t create_thread_dispatcher() {
     pthread_t threadDispatcher;
+
     if (pthread_create(&threadDispatcher, NULL, &dispatch_connection, NULL) != 0) {
         fprintf(stderr, "ERRORE: impossibile creare il Thread Dispatcher\n");
         exit(EXIT_FAILURE);
@@ -27,23 +34,20 @@ static pthread_t create_thread_dispatcher() {
     return threadDispatcher;
 }
 
-static void create_thread_pool(int poolSize) {
+static pthread_t *create_thread_pool(size_t poolSize) {
 
-    // pthread_t threadPool;
+    pthread_t *threadPool;
 
-    // if (pthread_create(&threadPool, NULL, &handle_connection, NULL) != 0) {
-    //     fprintf(stderr, "ERRORE: impossibile creare la Thread Pool\n");
-    //     exit(EXIT_FAILURE);
-    // }
+    if ((threadPool = (pthread_t *) malloc(sizeof(pthread_t) * poolSize)) == NULL) {
+        perror("ERRORE: impossibile allocare la memoria richiesta per la creazione della Thread Pool");
+		exit(errno);
+	}
 
-    // JOIN(threadPool);
-
-    // pthread_t threadPool[3];
-
-    // for (int i = 0; i < poolSize; i++) {
-    //     if (pthread_create(&threadPool[i], NULL, &handle_connection, NULL) != 0) {
-    //         fprintf(stderr, "ERRORE: impossibile creare la Thread Pool\n");
-    //         exit(EXIT_FAILURE);
-    //     }
-    // }
+    for (int i = 0; i < poolSize; i++) {
+        if (pthread_create(&threadPool[i], NULL, &handle_connection, NULL) != 0) {
+            fprintf(stderr, "ERRORE: impossibile creare la Thread Pool\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    return threadPool;
 }

@@ -7,7 +7,7 @@
 void add_tail(Node **list, void *value) {
     Node *newNode;
 	if ((newNode = (Node *) malloc(sizeof(Node))) == NULL) {
-        perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del nodo in Cache");
+        perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del nodo nella lista");
 		exit(errno);
 	}
 	newNode->value = value;
@@ -25,7 +25,7 @@ void add_tail(Node **list, void *value) {
 void add_head(Node **list, void *value) {
     Node *newNode;
 	if ((newNode = (Node *) malloc(sizeof(Node))) == NULL) {
-        perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del nodo in Cache");
+        perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del nodo nella lista");
 		exit(errno);
 	}
 	newNode->value = value;
@@ -34,7 +34,7 @@ void add_head(Node **list, void *value) {
 }
 
 void *remove_head(Node **list) {
-	void *value;
+	void *value = NULL;
     if (*list != NULL) {
         Node *tempNode = *list;
 		value = tempNode->value;

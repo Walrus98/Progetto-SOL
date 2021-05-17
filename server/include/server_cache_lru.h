@@ -8,8 +8,7 @@ typedef struct LRU {
     int crontab;
 } LRU;
 
-typedef struct Node NodeLRU;
-typedef NodeLRU *CacheLRU;
+typedef Node *CacheLRU;
 
 void insert_lru(Node **cache, LRU value);
 

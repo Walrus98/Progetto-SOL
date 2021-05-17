@@ -10,8 +10,7 @@
 // typedef struct NodeFIFO NodeFIFO;
 // typedef NodeFIFO *CacheFIFO;
 
-typedef struct Node NodeFIFO;
-typedef NodeFIFO *CacheFIFO;
+typedef Node *CacheFIFO;
 
 void insert_fifo(Node **cache, char *filePath);
 

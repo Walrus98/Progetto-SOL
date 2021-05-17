@@ -22,7 +22,7 @@ int main(void) {
     strncpy(sa.sun_path, SOCKNAME, UNIX_PATH_MAX);
     sa.sun_family = AF_UNIX;
 
-    fd_skt=socket(AF_UNIX,SOCK_STREAM,0);
+    fd_skt = socket(AF_UNIX,SOCK_STREAM,0);
 
     while (connect(fd_skt, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
         if (errno == ENOENT) {
@@ -31,7 +31,7 @@ int main(void) {
         } else
             exit(EXIT_FAILURE);
     }
-    write(fd_skt,"OHOOOHHH !", 11);
+    write(fd_skt,"Hello!", 10);
     read(fd_skt, buf, N);
     printf("Client got : %s\n", buf);
     close(fd_skt);

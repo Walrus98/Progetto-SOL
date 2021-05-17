@@ -18,7 +18,7 @@ int main(void) {
     create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY, REPLACEMENT_POLICY);
 
     // Stabilisco la connessione con i client
-    create_connection();
+    create_connection(THREAD_WORKERS_AMOUNT);
 
     // insert_storage("ciao.txt", "messaggiodiprova");
     // insert_storage("123213.txt", "cambiato");
