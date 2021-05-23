@@ -4,6 +4,7 @@
 
 #include "../include/list_utils.h"
 #include "../include/pthread_utils.h"
+#include "../include/server_packet_handler.h"
 
 static List packetBuffer;
 
@@ -40,9 +41,14 @@ int popPacket() {
 
     // Se il buffer non contiene nessuna richiesta
     int *fd;
-    while ((fd = ((int *) remove_head(&packetBuffer))) == NULL) {
+    while ((fd = ((int *) remove_head(&packetBuffer))) == NULL && CONNECTION == 1) {
         // Metto il thread in stato di wait
         WAIT(&cond, &mutex);
+    }
+
+    if (fd == NULL) {
+        UNLOCK(&mutex);
+        return -1;
     }
     
     // Assegno il contenuto della variabile condivisa a fileDescriptor
@@ -65,4 +71,11 @@ int packetQueue() {
     int length = size(packetBuffer);
     UNLOCK(&mutex);
     return length;
+}
+
+// Sveglia tutti i thread in attesa
+void broadcast() {
+    LOCK(&mutex);
+    BCAST(&cond);
+    UNLOCK(&mutex);
 }

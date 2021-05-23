@@ -36,4 +36,11 @@
         WRITE_ERROR("ERRORE FATALE join\n");                \
     }
 
+#define BCAST(c)                                      \
+    if (pthread_cond_broadcast(c) != 0)               \
+    {                                                 \
+        fprintf(stderr, "ERRORE FATALE broadcast\n"); \
+        pthread_exit((void *)EXIT_FAILURE);           \
+    }
+
 #endif

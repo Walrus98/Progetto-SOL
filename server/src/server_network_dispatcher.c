@@ -25,30 +25,17 @@ static int aggiorna(fd_set set, int fd_max) {
     return -1;
 }
 
-void *dispatch_connection(void *pfd) {
+void *dispatch_connection(void *dispatcherArgument) {
 
-    char msg[4];
-    
-    int *test = (int *) pfd;
+    int pipeHandleConnection[2];
+    int pfd[2];
+    DispatcherArg *argument = (DispatcherArg *) dispatcherArgument;
 
-    close(test[1]);
+    pipeHandleConnection[0] = argument->pipeHandleConnection[0];
+    pipeHandleConnection[1] = argument->pipeHandleConnection[1];
+    pfd[0] = argument->pfd[0];
+    pfd[1] = argument->pfd[1];
 
-    // close(*(((int *) pfd) + 1));
-
-    sleep(5);
-
-
-    if (read(test[0], msg, 4) == -1) {
-        perror("ERRORE PIPE\n");
-    }
-
-    // int l = read(*(((int *) pfd) + 0), msg, 100);
-
-    close(test[0]);
-
-    // close(*(((int *) pfd) + 0));
-    
-    // printf("NANII %s\n", msg);
 
     // Creo la struct del socket e assegno proprietà
     struct sockaddr_un sa; 
@@ -74,8 +61,12 @@ void *dispatch_connection(void *pfd) {
     // Registro nel set il server socket
     FD_SET(fd_sk, &set);
 
+    // Registro la pipe per terminare la connessione nel set
+    FD_SET(pipeHandleConnection[0], &set);
+
     // Assegno a fd_num il numero di fd_sk, che all'avvio del server, è il fd con il valore più alto
-    int fd_num = fd_sk;
+    int fd_num = fd_sk > pipeHandleConnection[0] ? fd_sk : pipeHandleConnection[0];
+
     while (1) {
         // Copio in rdset i valori contenuti in set
         rdset = set; 
@@ -83,7 +74,7 @@ void *dispatch_connection(void *pfd) {
         if (select(fd_num + 1, &rdset, NULL, NULL, NULL) == -1) {
             fprintf(stderr, "ERRORE: Impossibile eseguire la select nel Thread Dispatcher");
             exit(EXIT_FAILURE);
-        } else { 
+        } else {               
             // Scorro tutti i possibili file descriptor registrati
             for (int fd = 0; fd <= fd_num; fd++) {
                 // Controllo se il file descriptor che sto iterando è registrato dalla select in set
@@ -100,6 +91,15 @@ void *dispatch_connection(void *pfd) {
                         if (fd_c > fd_num) {
                             fd_num = fd_c;
                         }
+                    // Se il file descriptor che sto iterando è la pipe di terminazione della connessione
+                    } else if (fd == pipeHandleConnection[0]) {
+                        char ch[4];
+
+                        if (read(pipeHandleConnection[0], &ch, 4) == -1) {
+                            perror("ERRORE PIPE\n");
+                        }
+
+                        printf("HO LETTO %s\n", ch);
                     // Altrimenti significa che un client ha inviato un pacchetto al server  
                     } else {
                         pushPacket(fd);

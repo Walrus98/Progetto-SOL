@@ -1,50 +1,89 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <signal.h>
+// #include <sys/types.h>
+// #include <sys/syscall.h>
 
 #include "../include/pthread_utils.h"
 #include "../include/server_network.h"
+#include "../include/server_signal_handler.h"
 #include "../include/server_network_dispatcher.h"
 #include "../include/server_network_worker.h"
 
-static pthread_t create_thread_dispatcher();
-static pthread_t *create_thread_pool(size_t poolSize);
-
-static int pfd[2];
+static pthread_t create_thread_signal(int pipeHandleConnection[], sigset_t blockMask);
+static pthread_t create_thread_dispatcher(int pipeHandleConnection[], int pfd[]);
+static pthread_t *create_thread_pool(int pfd[], size_t poolSize);
 
 void create_connection(size_t poolSize) {
+
+    sigset_t blockMask;
+    sigemptyset(&blockMask);
+    sigaddset(&blockMask, SIGINT);
+    sigaddset(&blockMask, SIGQUIT);
+    sigaddset(&blockMask, SIGHUP);
+    pthread_sigmask(SIG_SETMASK, &blockMask, NULL);
+
+    // Pipe utilizzara per notificare tra il thread dispatcher e gli worker
+    int pfd[2];
+
+    // Pipe utilizzara per notificare tra il thread signal handler e il dispatcher
+    int pipeHandleConnection[2];
     
-    if (pipe(pfd) == -1) {
+    if (pipe(pipeHandleConnection) == -1) {
         printf("ERRORE !!\n");
     }
-    // close(pfd[1]);
-    // int l = read(pfd[0], msg, 4);
-    // close(pfd[0]);    
 
-    pthread_t threadDispatcher = create_thread_dispatcher();
-    pthread_t *threadWorker = create_thread_pool(poolSize);
+    pthread_t threadSignalHandler = create_thread_signal(pipeHandleConnection, blockMask);
+    pthread_t threadDispatcher = create_thread_dispatcher(pipeHandleConnection, pfd);
+    pthread_t *threadWorker = create_thread_pool(pfd, poolSize);
 
+    JOIN(threadSignalHandler);
     JOIN(threadDispatcher);
-
     for (int i = 0; i < poolSize; i++) {
         JOIN(threadWorker[i]);
     }
+
     free(threadWorker);
 }
 
-static pthread_t create_thread_dispatcher() {
+static pthread_t create_thread_signal(int pipeHandleConnection[], sigset_t blockMask) {
+
+    SignalHandlerArg handlerArgument;
+    handlerArgument.pipeHandleConnection[0] = pipeHandleConnection[0];
+    handlerArgument.pipeHandleConnection[1] = pipeHandleConnection[1];
+    handlerArgument.blockMask = blockMask;
+    
+    pthread_t threadSignalHandler;
+
+    if (pthread_create(&threadSignalHandler, NULL, &handle_signal, &handlerArgument) != 0) {
+        fprintf(stderr, "ERRORE: impossibile creare il Thread Dispatcher\n");
+        exit(EXIT_FAILURE);
+    }
+    return threadSignalHandler;
+}
+
+static pthread_t create_thread_dispatcher(int pipeHandleConnection[], int pfd[]) {
+
+    DispatcherArg dispatcherArgument;
+    dispatcherArgument.pipeHandleConnection[0] = pipeHandleConnection[0];
+    dispatcherArgument.pipeHandleConnection[1] = pipeHandleConnection[1];
+    dispatcherArgument.pfd[0] = pfd[0];
+    dispatcherArgument.pfd[1] = pfd[1];
+
     pthread_t threadDispatcher;
 
-    if (pthread_create(&threadDispatcher, NULL, &dispatch_connection, (void *) pfd) != 0) {
+    if (pthread_create(&threadDispatcher, NULL, &dispatch_connection, &dispatcherArgument) != 0) {
         fprintf(stderr, "ERRORE: impossibile creare il Thread Dispatcher\n");
         exit(EXIT_FAILURE);
     }
     return threadDispatcher;
 }
 
-static pthread_t *create_thread_pool(size_t poolSize) {
+static pthread_t *create_thread_pool(int pfd[], size_t poolSize) {
 
     pthread_t *threadPool;
 

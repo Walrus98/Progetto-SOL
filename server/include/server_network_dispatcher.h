@@ -1,6 +1,11 @@
 #ifndef SERVER_NETWORK_DISPATCHER_H
 #define SERVER_NETWORK_DISPATCHER_H
 
-void *dispatch_connection(void *pfd);
+typedef struct DispatcherArg {
+    int pipeHandleConnection[2];
+    int pfd[2];
+} DispatcherArg;
+
+void *dispatch_connection(void *dispatcherArgument);
 
 #endif

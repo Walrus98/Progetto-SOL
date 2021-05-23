@@ -14,19 +14,19 @@
 
 void *handle_connection(void *pfd) {
 
-    char msg[4];
+    // char msg[4];
 
-    int *test = (int *) pfd;
+    // int *test = (int *) pfd;
 
-    close(test[0]);
+    // close(test[0]);
     
     // close(*(((int *) pfd) + 0));
 
-    int l = write(test[1], "yolo", 4);
+    // int l = write(test[1], "yolo", 4);
 
     // int l = write(*(((int *) pfd) + 1), "yolo", 100);
 
-    close(test[1]);
+    // close(test[1]);
 
     // close(*(((int *) pfd) + 1));
 
@@ -34,8 +34,12 @@ void *handle_connection(void *pfd) {
 
     char buffer[100];
 
-    while (1) {
+    while (CONNECTION) {
         int fileDescriptor = popPacket();
+        
+        if (fileDescriptor == -1) {
+            break;
+        }
         
         int nread = read(fileDescriptor, buffer, N);
         if (nread == 0) {
@@ -45,9 +49,10 @@ void *handle_connection(void *pfd) {
             write(fileDescriptor, "Bye !", 5);
 
             // con pipe mando indietro il fd
-        }
+        }            
     }
 
+    printf("VADO A SUICIDARMI\n");
     pthread_exit(EXIT_SUCCESS);
 
     // // Creo un Buffer per leggere il messaggio inviato dal client

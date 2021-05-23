@@ -3,6 +3,8 @@
 
 #define N 100
 
+int CONNECTION;
+
 // Aggiungo un pacchetto alla lista dei pacchetti
 void pushPacket(int fileDescriptor);
 
@@ -11,5 +13,8 @@ int popPacket();
 
 // Restituisce la dimensione della lista dei pacchetti
 int packetQueue();
+
+// Risveglia tutti i thread in attesa
+void broadcast();
 
 #endif
