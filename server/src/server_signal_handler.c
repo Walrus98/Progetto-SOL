@@ -9,44 +9,59 @@
 #include <sys/syscall.h>
 
 #include "../include/server_signal_handler.h"
-#include "../include/server_packet_handler.h"
+#include "../include/server_network_handler.h"
 
 void *handle_signal(void *handlerArgument) {
 
     sigset_t blockMask;
     int pipeHandleConnection[2];
-    SignalHandlerArg *argument = (SignalHandlerArg *)handlerArgument;
+    SignalHandlerArg *argument = (SignalHandlerArg *) handlerArgument;
 
     blockMask = argument->blockMask;
     pipeHandleConnection[0] = argument->pipeHandleConnection[0];
     pipeHandleConnection[1] = argument->pipeHandleConnection[1];
 
-    CONNECTION = 1;
-
     int signal;
     sigwait(&blockMask, &signal);
-    switch (signal) {
-        case SIGINT:
-            ;
-            char ch[4] = "ciao";
 
-            if (write(pipeHandleConnection[1], &ch, 4) == -1) {
-                perror("ERRORE PIPE\n");
-            }
+    // if (signal == SIGINT || signal == SIGQUIT) {
+    //     CONNECTION = 0;
 
-            CONNECTION = 0;
-            broadcast();
-            
-            printf("SIGINT\n");
+    //     broadcast();
 
-            break;
-        case SIGQUIT:
-            printf("SIGQUIT\n");
-            break;
-        case SIGHUP:
-            printf("SIGHUP\n");
-            break;    
-        default:
-            break;
+    //     char message[10] = "force-stop";
+
+    //     if (write(pipeHandleConnection[1], &message, 10) == -1) {
+    //         perror("ERRORE PIPE\n");
+    //     }
+        
+    //     close(pipeHandleConnection[1]);
+        
+    //     printf("SIGINT o SIGQUIT\n");
+
+    // } else 
+    
+    if (signal == SIGINT) { //SIGHUP
+
+        // CONNECTION = 0;
+
+        STOP = 1;
+
+        broadcast();
+
+        char message[10] = "stop";
+
+        if (write(pipeHandleConnection[1], &message, 10) == -1) {
+            perror("ERRORE PIPE\n");
+        }
+        
+        close(pipeHandleConnection[1]);
+        
+        // printf("SIGINT o SIGQUIT\n");
+
+
+        printf("SIGHUP\n");
     }
+
+    return NULL;
 }

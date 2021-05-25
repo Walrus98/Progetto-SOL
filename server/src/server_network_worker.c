@@ -10,10 +10,9 @@
 #include <sys/un.h>
 
 #include "../include/server_network_worker.h"
-#include "../include/server_packet_handler.h"
+#include "../include/server_network_handler.h"
 
-void *handle_connection(void *pfd) {
-
+void *handle_connection(void *pipeHandleClient) {
     // char msg[4];
 
     // int *test = (int *) pfd;
@@ -32,28 +31,37 @@ void *handle_connection(void *pfd) {
 
     // ============================= //
 
+    int *pipeTask = (int *) pipeHandleClient;
+
     char buffer[100];
 
-    while (CONNECTION) {
+    while (CONNECTION == 1) {
         int fileDescriptor = popPacket();
         
-        if (fileDescriptor == -1) {
+        if (fileDescriptor == -1 && STOP == 1) {
             break;
         }
         
         int nread = read(fileDescriptor, buffer, N);
         if (nread == 0) {
+            // printf("manz?\n");
             close(fileDescriptor);
         } else {
             printf("Server got : %s\n", buffer);
             write(fileDescriptor, "Bye !", 5);
 
             // con pipe mando indietro il fd
+
+            write(pipeTask[1], &fileDescriptor, sizeof(int));
+
         }            
     }
 
+
+    close(pipeTask[1]);
     printf("VADO A SUICIDARMI\n");
-    pthread_exit(EXIT_SUCCESS);
+    
+    return NULL;
 
     // // Creo un Buffer per leggere il messaggio inviato dal client
     // char buf[N];

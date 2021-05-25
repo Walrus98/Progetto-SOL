@@ -3,7 +3,7 @@
 
 typedef struct DispatcherArg {
     int pipeHandleConnection[2];
-    int pfd[2];
+    int pipeHandleClient[2];
 } DispatcherArg;
 
 void *dispatch_connection(void *dispatcherArgument);

@@ -10,13 +10,14 @@
 #include <sys/un.h>
 
 #include "../include/server_network_dispatcher.h"
-#include "../include/server_packet_handler.h"
+#include "../include/server_network_handler.h"
 
 #define UNIX_PATH_MAX 108 
 #define SOCKNAME "./mysock"
 
+
 static int aggiorna(fd_set set, int fd_max) {
-    for (int i = fd_max - 1; i >= 0; i--) {
+    for (int i = fd_max; i >= 0; i--) {
         if (FD_ISSET(i, &set)) {
             return i;
         }
@@ -25,17 +26,28 @@ static int aggiorna(fd_set set, int fd_max) {
     return -1;
 }
 
+static int ciSonoClient(fd_set set, int fd_max, int fd_sk, int pipe[], int pipe2[]) { 
+    for (int i = fd_max; i >= 0; i--) {
+        if (FD_ISSET(i, &set)) {
+            if (i != fd_sk && i != pipe[0] && pipe2[0]) {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
 void *dispatch_connection(void *dispatcherArgument) {
 
     int pipeHandleConnection[2];
-    int pfd[2];
+    int pipeHandleClient[2];
     DispatcherArg *argument = (DispatcherArg *) dispatcherArgument;
 
     pipeHandleConnection[0] = argument->pipeHandleConnection[0];
     pipeHandleConnection[1] = argument->pipeHandleConnection[1];
-    pfd[0] = argument->pfd[0];
-    pfd[1] = argument->pfd[1];
-
+    pipeHandleClient[0] = argument->pipeHandleClient[0];
+    pipeHandleClient[1] = argument->pipeHandleClient[1];
 
     // Creo la struct del socket e assegno proprietà
     struct sockaddr_un sa; 
@@ -61,26 +73,40 @@ void *dispatch_connection(void *dispatcherArgument) {
     // Registro nel set il server socket
     FD_SET(fd_sk, &set);
 
-    // Registro la pipe per terminare la connessione nel set
+    // Registro nel set la pipe per terminare la connessione
     FD_SET(pipeHandleConnection[0], &set);
+    
+    // Registro nel set la pipe per inserire nuovamente i file descriptor inviati precedentemente ai thread worker 
+    FD_SET(pipeHandleClient[0], &set);
 
-    // Assegno a fd_num il numero di fd_sk, che all'avvio del server, è il fd con il valore più alto
-    int fd_num = fd_sk > pipeHandleConnection[0] ? fd_sk : pipeHandleConnection[0];
+    int fd_num;
+    if (fd_sk >= pipeHandleConnection[0] && fd_sk >= pipeHandleClient[0]) {
+        fd_num = fd_sk;
+    } else if (pipeHandleConnection[0] >= pipeHandleClient[0] && pipeHandleConnection[0] >= fd_sk) {
+        fd_num = pipeHandleConnection[0];
+    } else {
+        fd_num = pipeHandleClient[0];
+    }
 
-    while (1) {
+    while (CONNECTION == 1) {
         // Copio in rdset i valori contenuti in set
         rdset = set; 
+
+        if (!ciSonoClient(set, fd_num, fd_sk, pipeHandleConnection, pipeHandleClient) && STOP == 1) {
+            break;
+        }
+
         // Prendo dal rdset tutti gli elementi che sono pronti ad eseguire operazioni di lettura
         if (select(fd_num + 1, &rdset, NULL, NULL, NULL) == -1) {
             fprintf(stderr, "ERRORE: Impossibile eseguire la select nel Thread Dispatcher");
             exit(EXIT_FAILURE);
-        } else {               
+        } else {             
             // Scorro tutti i possibili file descriptor registrati
             for (int fd = 0; fd <= fd_num; fd++) {
                 // Controllo se il file descriptor che sto iterando è registrato dalla select in set
                 if (FD_ISSET(fd, &rdset)) {
                     // Se il file descriptor che sto iterando è il serverSocket
-                    if (fd == fd_sk) { 
+                    if (fd == fd_sk && STOP == 0) { 
                         // Allora significa che devo accettare una nuova connessione e registrare anche essa all'interno del set
                         int fd_c = accept(fd_sk, NULL, 0);
                         // Registro il nuovo client sul set
@@ -91,22 +117,49 @@ void *dispatch_connection(void *dispatcherArgument) {
                         if (fd_c > fd_num) {
                             fd_num = fd_c;
                         }
+
                     // Se il file descriptor che sto iterando è la pipe di terminazione della connessione
                     } else if (fd == pipeHandleConnection[0]) {
-                        char ch[4];
 
-                        if (read(pipeHandleConnection[0], &ch, 4) == -1) {
+                        char message[10];
+
+                        if (read(pipeHandleConnection[0], &message, 10) == -1) {
                             perror("ERRORE PIPE\n");
                         }
 
-                        printf("HO LETTO %s\n", ch);
+                        printf("HO LETTO %s\n", message);
+
+                        if (strncmp(message, "stop", 10)) {
+                            // STOP = 1;
+                        }
+
+                        if (strncmp(message, "force-stop", 10)) {
+                            break;
+                        }
+
+
+                    
+                    // Se il file descriptor che sto iterando è la pipe utilizzata per reinserire i file descriptor
+                    } else if (fd == pipeHandleClient[0]) { 
+                        int fileDescriptor;
+
+                        if (read(pipeHandleClient[0], &fileDescriptor, sizeof(int)) == -1) {
+                            perror("ERRORE PIPE\n");
+                        }
+
+                        FD_SET(fileDescriptor, &set);
+                        
+                        if (fileDescriptor > fd_num) {
+                            fd_num = fileDescriptor;
+                        }
+
                     // Altrimenti significa che un client ha inviato un pacchetto al server  
                     } else {
+                        
                         pushPacket(fd);
                         FD_CLR(fd, &set);
                         fd_num = aggiorna(set, fd_num);
                         
-
                         // // Creo un Buffer per leggere il messaggio inviato dal client
                         // char buf[N];
                         // // Leggo il messaggio inviato dal client
@@ -127,7 +180,10 @@ void *dispatch_connection(void *dispatcherArgument) {
             }
         } 
     }
+    
+    close(pipeHandleConnection[0]);
+    close(pipeHandleClient[0]);
 
-    pthread_exit(EXIT_SUCCESS);
+    return NULL;
 
 }

@@ -3,7 +3,9 @@ CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 INCLUDES	= -I .
 
-TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o server_cache_fifo.o list_utils.o icl_hash.o server_network.o server_network_dispatcher.o server_network_worker.o server_packet_handler.o server_signal_handler.o
+TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o \
+			server_cache_fifo.o list_utils.o icl_hash.o server_network.o server_network_dispatcher.o \
+			server_network_worker.o server_network_handler.o server_signal_handler.o
 
 .PHONY: all test clean $(TARGETS)
 .SUFFIXES: .c .h .o
@@ -14,7 +16,7 @@ server: $(TARGETS)
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
 	rm -R build/obj/*.o
 #	build/server
-	valgrind build/server –-leak-check=full --track-origins=yes --tool=memcheck
+	valgrind build/server --leak-check=full --track-origins=yes --tool=memcheck
 
 server.o:
 	gcc -c server/src/server.c -o build/obj/$@
@@ -49,8 +51,8 @@ server_network_dispatcher.o:
 server_network_worker.o:
 	gcc -c server/src/server_network_worker.c -o build/obj/$@
 
-server_packet_handler.o:
-	gcc -pthread -c server/src/server_packet_handler.c -o build/obj/$@
+server_network_handler.o:
+	gcc -pthread -c server/src/server_network_handler.c -o build/obj/$@
 
 server_signal_handler.o:
 	gcc -pthread -c server/src/server_signal_handler.c -o build/obj/$@

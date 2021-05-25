@@ -27,7 +27,7 @@ void insert_fifo(Node **cache, char *filePath) {
 	// }
 
 char *pop_fifo(Node **cache) {
-	(char *) remove_head(cache);
+	return (char *) remove_head(cache);
 }
 	// char *filePath;
     // if (*cache != NULL) {

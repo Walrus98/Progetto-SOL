@@ -32,6 +32,7 @@ int main(void) {
             exit(EXIT_FAILURE);
     }
     write(fd_skt,"Hello!", 10);
+    sleep(5);
     read(fd_skt, buf, N);
     printf("Client got : %s\n", buf);
     close(fd_skt);
