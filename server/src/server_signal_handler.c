@@ -24,44 +24,48 @@ void *handle_signal(void *handlerArgument) {
     int signal;
     sigwait(&blockMask, &signal);
 
-    // if (signal == SIGINT || signal == SIGQUIT) {
-    //     CONNECTION = 0;
+    char message[10];
 
-    //     broadcast();
+    if (signal == SIGINT || signal == SIGQUIT) {
+        strncpy(message, "force-stop", 10);
 
-    //     char message[10] = "force-stop";
+        printf("Ricevuto un SIGNINT o un SIGQUIT\n");
+    } else {
+        strncpy(message, "stop", 10);
 
-    //     if (write(pipeHandleConnection[1], &message, 10) == -1) {
-    //         perror("ERRORE PIPE\n");
-    //     }
-        
-    //     close(pipeHandleConnection[1]);
-        
-    //     printf("SIGINT o SIGQUIT\n");
-
-    // } else 
-    
-    if (signal == SIGINT) { //SIGHUP
-
-        // CONNECTION = 0;
-
-        STOP = 1;
-
-        broadcast();
-
-        char message[10] = "stop";
-
-        if (write(pipeHandleConnection[1], &message, 10) == -1) {
-            perror("ERRORE PIPE\n");
-        }
-        
-        close(pipeHandleConnection[1]);
-        
-        // printf("SIGINT o SIGQUIT\n");
-
-
-        printf("SIGHUP\n");
+        printf("Ricevuto un SIGHUP\n");
     }
+
+    if (write(pipeHandleConnection[1], &message, 10) == -1) {
+        perror("ERRORE PIPE\n");
+    }
+    
+    close(pipeHandleConnection[1]);
 
     return NULL;
 }
+
+// if (signal == SIGINT || signal == SIGQUIT) {
+
+//     // CONNECTION = 0;
+
+//     // broadcast();
+
+//     char message[10] = "force-stop";
+
+//     if (write(pipeHandleConnection[1], &message, 10) == -1) {
+//         perror("ERRORE PIPE\n");
+//     }
+            
+//     printf("SIGINT o SIGQUIT\n");
+
+// } else if (signal == SIGHUP) { 
+
+//     char message[10] = "stop";
+    
+//     if (write(pipeHandleConnection[1], &message, 10) == -1) {
+//         perror("ERRORE PIPE\n");
+//     }
+    
+//     printf("SIGHUP\n");
+// }

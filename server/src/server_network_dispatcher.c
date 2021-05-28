@@ -26,17 +26,8 @@ static int aggiorna(fd_set set, int fd_max) {
     return -1;
 }
 
-static int ciSonoClient(fd_set set, int fd_max, int fd_sk, int pipe[], int pipe2[]) { 
-    for (int i = fd_max; i >= 0; i--) {
-        if (FD_ISSET(i, &set)) {
-            if (i != fd_sk && i != pipe[0] && pipe2[0]) {
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
+static int connectedClients = 0;
+static int ACCEPT_CONNECTION = 1;
 
 void *dispatch_connection(void *dispatcherArgument) {
 
@@ -90,9 +81,11 @@ void *dispatch_connection(void *dispatcherArgument) {
 
     while (CONNECTION == 1) {
         // Copio in rdset i valori contenuti in set
-        rdset = set; 
+        rdset = set;
 
-        if (!ciSonoClient(set, fd_num, fd_sk, pipeHandleConnection, pipeHandleClient) && STOP == 1) {
+        if (connectedClients == 0 && ACCEPT_CONNECTION == 0) {            
+            CONNECTION = 0;
+            broadcast();
             break;
         }
 
@@ -106,7 +99,7 @@ void *dispatch_connection(void *dispatcherArgument) {
                 // Controllo se il file descriptor che sto iterando è registrato dalla select in set
                 if (FD_ISSET(fd, &rdset)) {
                     // Se il file descriptor che sto iterando è il serverSocket
-                    if (fd == fd_sk && STOP == 0) { 
+                    if (fd == fd_sk && ACCEPT_CONNECTION == 1) { 
                         // Allora significa che devo accettare una nuova connessione e registrare anche essa all'interno del set
                         int fd_c = accept(fd_sk, NULL, 0);
                         // Registro il nuovo client sul set
@@ -117,6 +110,8 @@ void *dispatch_connection(void *dispatcherArgument) {
                         if (fd_c > fd_num) {
                             fd_num = fd_c;
                         }
+
+                        connectedClients++;
 
                     // Se il file descriptor che sto iterando è la pipe di terminazione della connessione
                     } else if (fd == pipeHandleConnection[0]) {
@@ -129,28 +124,38 @@ void *dispatch_connection(void *dispatcherArgument) {
 
                         printf("HO LETTO %s\n", message);
 
-                        if (strncmp(message, "stop", 10)) {
-                            // STOP = 1;
+                        if (strncmp(message, "stop", 10) == 0) {
+                            ACCEPT_CONNECTION = 0;
+
+                            FD_CLR(pipeHandleConnection[0], &set);
                         }
 
-                        if (strncmp(message, "force-stop", 10)) {
+                        if (strncmp(message, "force-stop", 10) == 0) {
+
+                            CONNECTION = 0;
+                            broadcast();
+
                             break;
                         }
-
-
                     
                     // Se il file descriptor che sto iterando è la pipe utilizzata per reinserire i file descriptor
                     } else if (fd == pipeHandleClient[0]) { 
+                
                         int fileDescriptor;
 
                         if (read(pipeHandleClient[0], &fileDescriptor, sizeof(int)) == -1) {
                             perror("ERRORE PIPE\n");
                         }
 
-                        FD_SET(fileDescriptor, &set);
-                        
-                        if (fileDescriptor > fd_num) {
-                            fd_num = fileDescriptor;
+                        if (fileDescriptor == -1) {
+                            connectedClients--;
+                        } else {
+
+                            FD_SET(fileDescriptor, &set);
+                            
+                            if (fileDescriptor > fd_num) {
+                                fd_num = fileDescriptor;
+                            }
                         }
 
                     // Altrimenti significa che un client ha inviato un pacchetto al server  
@@ -159,22 +164,6 @@ void *dispatch_connection(void *dispatcherArgument) {
                         pushPacket(fd);
                         FD_CLR(fd, &set);
                         fd_num = aggiorna(set, fd_num);
-                        
-                        // // Creo un Buffer per leggere il messaggio inviato dal client
-                        // char buf[N];
-                        // // Leggo il messaggio inviato dal client
-                        // int nread = read(fd, buf, N);
-                        
-                        // // Se nread = 0, significa che il client ha terminato la conenssione
-                        // if (nread == 0) {
-                        //     FD_CLR(fd, &set);
-                        //     fd_num = aggiorna(set, fd_num);
-                        //     close(fd);
-                        // // Altrimenti rispondo al client
-                        // } else {
-                        //     printf("Server got : %s\n", buf);
-                        //     write(fd, "Bye !", 5);
-                        // }
                     }
                 }
             }
@@ -185,5 +174,21 @@ void *dispatch_connection(void *dispatcherArgument) {
     close(pipeHandleClient[0]);
 
     return NULL;
-
 }
+
+
+// Creo un Buffer per leggere il messaggio inviato dal client
+// char buf[N];
+// // Leggo il messaggio inviato dal client
+// int nread = read(fd, buf, N);
+
+// // Se nread = 0, significa che il client ha terminato la conenssione
+// if (nread == 0) {
+//     FD_CLR(fd, &set);
+//     fd_num = aggiorna(set, fd_num);
+//     close(fd);
+// // Altrimenti rispondo al client
+// } else {
+//     printf("Server got : %s\n", buf);
+//     write(fd, "Bye !", 5);
+// }

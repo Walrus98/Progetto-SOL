@@ -46,7 +46,7 @@ int popPacket() {
         WAIT(&cond, &mutex);
     }
 
-    if (fd == NULL) {
+    if (CONNECTION == 0) { // fd == NULL
         UNLOCK(&mutex);
         return -1;
     }

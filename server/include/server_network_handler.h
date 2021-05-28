@@ -4,7 +4,6 @@
 #define N 100
 
 int CONNECTION;
-int STOP;
 
 // Aggiungo un pacchetto alla lista dei pacchetti
 void pushPacket(int fileDescriptor);

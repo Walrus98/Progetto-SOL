@@ -12,24 +12,13 @@
 #include "../include/server_network_worker.h"
 #include "../include/server_network_handler.h"
 
+typedef struct Packet {
+    int id;
+    int length;
+    char *message;
+} Packet;
+
 void *handle_connection(void *pipeHandleClient) {
-    // char msg[4];
-
-    // int *test = (int *) pfd;
-
-    // close(test[0]);
-    
-    // close(*(((int *) pfd) + 0));
-
-    // int l = write(test[1], "yolo", 4);
-
-    // int l = write(*(((int *) pfd) + 1), "yolo", 100);
-
-    // close(test[1]);
-
-    // close(*(((int *) pfd) + 1));
-
-    // ============================= //
 
     int *pipeTask = (int *) pipeHandleClient;
 
@@ -38,25 +27,96 @@ void *handle_connection(void *pipeHandleClient) {
     while (CONNECTION == 1) {
         int fileDescriptor = popPacket();
         
-        if (fileDescriptor == -1 && STOP == 1) {
+        if (fileDescriptor == -1) {
             break;
         }
+
+        int id = 0;
+        int length = 0;
+        char *testo = NULL;
         
-        int nread = read(fileDescriptor, buffer, N);
+        // int nread = read(fileDescriptor, buffer, N);
+        
+        /**
+         * Ricevo il pacchetto con 3 read
+         */
+
+        // int nread = read(fileDescriptor, buffer, sizeof(int));
+        // if (nread != 0) {
+        //     id = *((int *) buffer);
+        // }
+
+        // nread = read(fileDescriptor, buffer, sizeof(int));
+        // if (nread != 0) {
+        //     length = *((int *) buffer);
+        // }
+
+        // nread = read(fileDescriptor, buffer, length);
+        // if (nread != 0) {
+        //     testo = buffer;
+        // }
+
+        // Pacchetto inviato con il buffer
+
+        // int size = 0;
+
+        // int nread = read(fileDescriptor, buffer, sizeof(int));
+        // if (nread != 0) {
+        //     size = *((int *) buffer);
+        // }
+        
+        // nread = read(fileDescriptor, buffer, size);
+        // if (nread != 0) {
+        //     id = *((int *) buffer);
+        //     length = *((int *) buffer + 4);
+        //     testo = ((char *) buffer + 8);
+        // }
+
+        
+        /**
+         * Ricevo il pacchetto con una struct
+         */
+
+        int size = 0;
+
+        int nread = read(fileDescriptor, buffer, sizeof(int));
+        if (nread != 0) {
+            size = *((int *) buffer);
+        }
+        
+        nread = read(fileDescriptor, buffer, size);
+        if (nread != 0) {
+            Packet packet = *((Packet *) buffer);
+            id = packet.id;
+            length = packet.length;
+            testo = packet.message;
+        }
+
         if (nread == 0) {
-            // printf("manz?\n");
-            close(fileDescriptor);
+
+            int connectedClients = -1;
+
+            write(pipeTask[1], &connectedClients, sizeof(int));
+
+            close(fileDescriptor);            
         } else {
-            printf("Server got : %s\n", buffer);
+            
+            printf("size -> %d\n", size);
+            printf("ID -> %d\n", id);
+            printf("Length -> %d\n", length);
+            printf("Message -> %s\n", testo);
+
+            
+
+
+            // printf("Server got : %s\n", buffer);
             write(fileDescriptor, "Bye !", 5);
 
             // con pipe mando indietro il fd
 
             write(pipeTask[1], &fileDescriptor, sizeof(int));
-
         }            
     }
-
 
     close(pipeTask[1]);
     printf("VADO A SUICIDARMI\n");
