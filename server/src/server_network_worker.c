@@ -9,20 +9,58 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <errno.h>
+
 #include "../include/server_network_worker.h"
 #include "../include/server_network_handler.h"
 
-typedef struct Packet {
-    int id;
-    int length;
-    char *message;
-} Packet;
+#define CHECK_CONNECTION(buffer, pipeTask, fd, size)     \
+    nread = readn(fd, buffer, size);                     \
+    if (nread == 0 || nread == -1)                       \
+    {                                                    \
+        int connectedClients = -1;                       \
+        write(pipeTask, &connectedClients, sizeof(int)); \
+        close(fd);                                       \
+        continue;                                        \
+    }
+
+/* Read "n" bytes from a descriptor */
+
+/** Evita letture parziali
+ *
+ *   \retval -1   errore (errno settato)
+ *   \retval  0   se durante la lettura da fd leggo EOF
+ *   \retval size se termina con successo
+ */
+static inline int readn(long fd, void *buf, size_t size) {
+    size_t left = size;
+    int r;
+    char *bufptr = (char *)buf;
+    while (left > 0) {
+        if ((r = read((int)fd, bufptr, left)) == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return -1;
+        }
+        // EOF
+        if (r == 0) {
+            return 0; 
+        }        
+        left -= r;
+        bufptr += r;
+    }
+
+    return size;
+}
 
 void *handle_connection(void *pipeHandleClient) {
 
     int *pipeTask = (int *) pipeHandleClient;
 
-    char buffer[100];
+    void *header = malloc(sizeof(int));
+    void *payload = NULL;
+    int nread;
 
     while (CONNECTION == 1) {
         int fileDescriptor = popPacket();
@@ -31,116 +69,35 @@ void *handle_connection(void *pipeHandleClient) {
             break;
         }
 
-        int id = 0;
-        int length = 0;
-        char *testo = NULL;
+        // leggo l'header
+        CHECK_CONNECTION(header, pipeTask[1], fileDescriptor, sizeof(int));
+        int id = *((int *) header);
+
+        CHECK_CONNECTION(header, pipeTask[1], fileDescriptor, sizeof(int));
+        int length = *((int *) header);
+        payload = malloc(length);
         
-        // int nread = read(fileDescriptor, buffer, N);
-        
-        /**
-         * Ricevo il pacchetto con 3 read
-         */
+        // leggo il paylod
+        CHECK_CONNECTION(payload, pipeTask[1], fileDescriptor, length);
+        char *testo = (char *) payload;
 
-        // int nread = read(fileDescriptor, buffer, sizeof(int));
-        // if (nread != 0) {
-        //     id = *((int *) buffer);
-        // }
+        printf("ID -> %d\n", id);
+        printf("Length -> %d\n", length);
+        printf("Message -> %s\n", testo);
 
-        // nread = read(fileDescriptor, buffer, sizeof(int));
-        // if (nread != 0) {
-        //     length = *((int *) buffer);
-        // }
+        write(fileDescriptor, "Bye !", 5);
 
-        // nread = read(fileDescriptor, buffer, length);
-        // if (nread != 0) {
-        //     testo = buffer;
-        // }
-
-        // Pacchetto inviato con il buffer
-
-        // int size = 0;
-
-        // int nread = read(fileDescriptor, buffer, sizeof(int));
-        // if (nread != 0) {
-        //     size = *((int *) buffer);
-        // }
-        
-        // nread = read(fileDescriptor, buffer, size);
-        // if (nread != 0) {
-        //     id = *((int *) buffer);
-        //     length = *((int *) buffer + 4);
-        //     testo = ((char *) buffer + 8);
-        // }
-
-        
-        /**
-         * Ricevo il pacchetto con una struct
-         */
-
-        int size = 0;
-
-        int nread = read(fileDescriptor, buffer, sizeof(int));
-        if (nread != 0) {
-            size = *((int *) buffer);
-        }
-        
-        nread = read(fileDescriptor, buffer, size);
-        if (nread != 0) {
-            Packet packet = *((Packet *) buffer);
-            id = packet.id;
-            length = packet.length;
-            testo = packet.message;
-        }
-
-        if (nread == 0) {
-
-            int connectedClients = -1;
-
-            write(pipeTask[1], &connectedClients, sizeof(int));
-
-            close(fileDescriptor);            
-        } else {
-            
-            printf("size -> %d\n", size);
-            printf("ID -> %d\n", id);
-            printf("Length -> %d\n", length);
-            printf("Message -> %s\n", testo);
-
-            
-
-
-            // printf("Server got : %s\n", buffer);
-            write(fileDescriptor, "Bye !", 5);
-
-            // con pipe mando indietro il fd
-
-            write(pipeTask[1], &fileDescriptor, sizeof(int));
-        }            
+        // Attraverso la pipe mando indietro il fd al Thread Dispatcher
+        write(pipeTask[1], &fileDescriptor, sizeof(int));
+              
     }
 
     close(pipeTask[1]);
     printf("VADO A SUICIDARMI\n");
     
     return NULL;
-
-    // // Creo un Buffer per leggere il messaggio inviato dal client
-    // char buf[N];
-    // // Leggo il messaggio inviato dal client
-    // int nread = read(fd, buf, N);
-    
-    // // Se nread = 0, significa che il client ha terminato la conenssione
-    // if (nread == 0) {
-    //     FD_CLR(fd, &set);
-    //     fd_num = aggiorna(set, fd_num);
-    //     close(fd);
-    // // Altrimenti rispondo al client
-    // } else {
-    //     printf("Server got : %s\n", buf);
-    //     write(fd, "Bye !", 5);
-    // }
-
-
 }
+
 
 // /* Read "n" bytes from a descriptor */
 // ssize_t readn(int fd, void *ptr, size_t n) {
@@ -182,4 +139,84 @@ void *handle_connection(void *pipeHandleClient) {
 //         ptr += nwritten;
 //     }
 //     return (n - nleft); /* return >= 0 */
+// }
+
+
+
+// aaaaaaaaaaa
+
+        // int nread = read(fileDescriptor, buffer, N);
+
+        /**
+         * Ricevo il pacchetto con 3 read
+         */
+
+        // int nread = read(fileDescriptor, buffer, sizeof(int));
+        // if (nread != 0) {
+        //     id = *((int *) buffer);
+        // }
+
+        // nread = read(fileDescriptor, buffer, sizeof(int));
+        // if (nread != 0) {
+        //     length = *((int *) buffer);
+        // }
+
+        // nread = read(fileDescriptor, buffer, length);
+        // if (nread != 0) {
+        //     testo = buffer;
+        // }
+        
+        /**
+         * Ricevo il pacchetto con una struct
+         */
+
+        // int size = 0;
+
+        // int nread = read(fileDescriptor, buffer, sizeof(int));
+        // if (nread != 0) {
+        //     size = *((int *) buffer);
+        // }
+        
+        // nread = read(fileDescriptor, buffer, size);
+        // if (nread != 0) {
+        //     Packet packet = *((Packet *) buffer);
+        //     id = packet.id;
+        //     length = packet.length;
+        //     // testo = packet.message;
+        //     printf("test %s\n", packet.message);
+        // }
+
+         // Pacchetto inviato con il buffer
+
+        // int size = 0;
+
+        // int nread = read(fileDescriptor, buffer, sizeof(int));
+        // if (nread != 0) {
+        //     size = *((int *) buffer);
+        // }
+        
+        // nread = read(fileDescriptor, buffer, size);
+        // if (nread != 0) {
+        //     id = *((int *) buffer);
+        //     length = *((int *) buffer + 4);
+        //     testo = ((char *) buffer + 8);
+        // }
+
+
+
+// ssize_t readn(int fd, void *ptr, size_t n) {
+
+//     size_t bytesRead = 0;
+//     do {
+//         ptr += bytesRead;
+//         bytesRead = read(fd, ptr, n);
+//         n -= bytesRead;
+
+//         printf("bytesRead %ld\n", bytesRead);
+
+//     } while (n > 0 && bytesRead > 0);
+
+//     printf("finito!\n");
+
+//     return bytesRead <= 0 ? bytesRead : 1;
 // }

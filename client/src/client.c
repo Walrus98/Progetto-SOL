@@ -15,13 +15,8 @@
 #define SOCKNAME "../../mysock"
 #define N 100
 
-typedef struct Packet {
-    int id;
-    int length;
-    char *message;
-} Packet;
-
 int main(void) {
+
     int fd_skt, fd_c;
     char buf[N];
     struct sockaddr_un sa;
@@ -42,6 +37,25 @@ int main(void) {
     char message[5] = "ciao"; // c i a o \0
     int length = strlen(message) + 1;
 
+
+    // header
+    write(fd_skt, &id, sizeof(int));
+    write(fd_skt, &length, sizeof(int));
+    
+    // payload
+    write(fd_skt, message, length);
+
+
+    sleep(5);
+    read(fd_skt, buf, N);
+    printf("Client got : %s\n", buf);
+    close(fd_skt);
+
+    return 0;
+}
+
+
+
     /**
      * Mando il pacchetto con 3 write
      */
@@ -54,6 +68,9 @@ int main(void) {
      * Creo un buffer, invio prima la dimensione e poi invio il pacchetto
      */
 
+    // id + size; 
+    // faccio malloc size
+
     // int size = strlen(message) + 1 + sizeof(int) + sizeof(int);
     // void *buffer = malloc(sizeof(size));
 
@@ -64,27 +81,22 @@ int main(void) {
     // write(fd_skt, &size, sizeof(int));
     // write(fd_skt, buffer, size);
 
+    // ==============
+
     /**
      * Mando il pacchetto con una struct
      */
 
-    int size = strlen(message) + 1 + sizeof(int) + sizeof(int);
+    // int size = strlen(message) + 1 + sizeof(int) + sizeof(int);
 
-    Packet packet;
-    packet.id = id;
-    packet.length = length;
-    packet.message = "ciao";
+    // Packet packet;
+    // packet.id = id;
+    // packet.length = length;
 
-    write(fd_skt, &size, sizeof(int));
-    write(fd_skt, (void *) &packet, size);
+    // packet.message = (char *) malloc(sizeof(char) * length);
+    // // packet.message = testo;
+
+    // write(fd_skt, &size, sizeof(int));
+    // write(fd_skt, (void *) &packet, size);
 
     // write(fd_skt,"Hello!", 10);
-
-    sleep(5);
-    read(fd_skt, buf, N);
-    printf("Client got : %s\n", buf);
-    close(fd_skt);
-    exit(EXIT_SUCCESS);
-
-    return 0;
-}

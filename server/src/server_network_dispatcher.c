@@ -122,7 +122,7 @@ void *dispatch_connection(void *dispatcherArgument) {
                             perror("ERRORE PIPE\n");
                         }
 
-                        printf("HO LETTO %s\n", message);
+                        // printf("HO LETTO %s\n", message);
 
                         if (strncmp(message, "stop", 10) == 0) {
                             ACCEPT_CONNECTION = 0;
