@@ -17,7 +17,8 @@ void add_tail(Node **list, void *value) {
 		*list = newNode;
 	} else {
 		Node *currentNode = *list;
-        for (; currentNode->next != NULL; currentNode = currentNode->next);
+        for (; currentNode->next != NULL; currentNode = currentNode->next);;
+
 		currentNode->next = newNode;
 	}
 }

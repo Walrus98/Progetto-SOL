@@ -1,20 +1,16 @@
 #ifndef SERVER_PACKET_HANDLER_H
 #define SERVER_PACKET_HANDLER_H
 
-#define N 100
+#define OPEN_FILE 0
+#define READ_FILE 1
+#define READ_N_FILES 2
+#define WRITE_FILE 3
+#define APPEND_TO_FILE 4
+#define LOCK_FILE 5
+#define UNLOCK_FILE 6
+#define CLOSE_FILE 6
+#define REMOVE_FILE 7
 
-int CONNECTION;
-
-// Aggiungo un pacchetto alla lista dei pacchetti
-void pushPacket(int fileDescriptor);
-
-// Rimuove un pacchetto dalla lista dei pacchetti
-int popPacket();
-
-// Restituisce la dimensione della lista dei pacchetti
-int packetQueue();
-
-// Risveglia tutti i thread in attesa
-void broadcast();
+void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor);
 
 #endif

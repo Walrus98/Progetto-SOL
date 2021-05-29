@@ -1,81 +1,55 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <errno.h>
 
-#include "../include/list_utils.h"
-#include "../include/pthread_utils.h"
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include "../include/server_packet_handler.h"
+#include "../include/server_storage.h"
 
-static List packetBuffer;
+// - int openFile(const char* pathname, int flags)
+// Richiesta di apertura o di creazione di un file. La semantica della openFile dipende dai flags passati come secondo
+// argomento che possono essere O_CREATE ed O_LOCK. Se viene passato il flag O_CREATE ed il file esiste già
+// memorizzato nel server, oppure il file non esiste ed il flag O_CREATE non è stato specificato, viene ritornato un
+// errore. In caso di successo, il file viene sempre aperto in lettura e scrittura, ed in particolare le scritture possono
+// avvenire solo in append. Se viene passato il flag O_LOCK (eventualmente in OR con O_CREATE) il file viene
+// aperto e/o creato in modalità locked, che vuol dire che l’unico che può leggere o scrivere il file ‘pathname’ è il
+// processo che lo ha aperto. Il flag O_LOCK può essere esplicitamente resettato utilizzando la chiamata unlockFile,
+// descritta di seguito.
+// Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene settato opportunamente.
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t  cond  = PTHREAD_COND_INITIALIZER;
 
-// Aggiungo un pacchetto alla lista dei pacchetti
-void pushPacket(int fileDescriptor) {    
-    
-    // Acquisco la lock sul buffer
-    LOCK(&mutex);
+void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
+    switch (packetID) {
 
-    // ALloco sull'heap il descrittore del file, così da avere l'indirizzo di memoria condiviso fra più thread
-    int *fd = (int *) malloc(sizeof(int));
-    *fd = fileDescriptor;
+        case OPEN_FILE:
 
-    // Aggiungo la richiesta sul buffer
-    add_tail(&packetBuffer, fd);
+            // int packetID = *((int *) packetHeader);
+            // int packetSize = *((int *) packetHeader + 1);
+            ;
 
-    // printf("HO AGGIUNTO NELLA CODA %d\n", *fd);
+            int fileLength = *((int *) payload);
+            char *fileName = payload + 4;
+            int flagCreate = *((int *) (payload + 4 + fileLength));
+            int flagLock = *((int *) (payload + 4 + fileLength + 4));
 
-    // Segnalo ai thread worker che c'è un elemento all'interno del buffer
-    SIGNAL(&cond);
+            printf("Header ID -> %d\n", packetID);
+            printf("Header Size -> %d\n", packetSize);
+            printf("Name Length -> %d\n", fileLength);
+            printf("Name -> %s\n", fileName);
+            printf("Flag Create -> %d\n", flagCreate);
+            printf("Flag Lock -> %d\n", flagLock);
 
-    // Rilascio la lock sul buffer
-    UNLOCK(&mutex);
-}
+            // openfile(id, length, message);
 
-// Rimuove un pacchetto dalla lista dei pacchetti
-int popPacket() {
+            write(fileDescriptor, "Bye !", 5);
+            break;
 
-    // Acquisco la lock sul buffer
-    LOCK(&mutex);
-
-    // Se il buffer non contiene nessuna richiesta
-    int *fd;
-    while ((fd = ((int *) remove_head(&packetBuffer))) == NULL && CONNECTION == 1) {
-        // Metto il thread in stato di wait
-        WAIT(&cond, &mutex);
     }
-
-    if (fd == NULL) {
-        UNLOCK(&mutex);
-        return -1;
-    }
-    
-    // Assegno il contenuto della variabile condivisa a fileDescriptor
-    int fileDescriptor = *fd;
-
-    // printf("HO PRESO DALLA CODA %d\n", fileDescriptor);
-
-    // Cancello il descrittore del file dal buffer
-    free(fd);
-
-    // Il thread rilascia la lock e restituisce il filedescriptor
-    UNLOCK(&mutex);
-
-    return fileDescriptor;
-}
-
-// Restituisce la dimensione della lista dei pacchetti
-int packetQueue() {
-    LOCK(&mutex);
-    int length = size(packetBuffer);
-    UNLOCK(&mutex);
-    return length;
-}
-
-// Sveglia tutti i thread in attesa
-void broadcast() {
-    LOCK(&mutex);
-    BCAST(&cond);
-    UNLOCK(&mutex);
 }

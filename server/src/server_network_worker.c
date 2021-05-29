@@ -3,16 +3,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include <errno.h>
 
 #include "../include/server_network_worker.h"
 #include "../include/server_network_handler.h"
+#include "../include/server_packet_handler.h"
 
 #define CHECK_CONNECTION(buffer, pipeTask, fd, size)     \
     nread = readn(fd, buffer, size);                     \
@@ -58,8 +59,8 @@ void *handle_connection(void *pipeHandleClient) {
 
     int *pipeTask = (int *) pipeHandleClient;
 
-    void *header = malloc(sizeof(int));
-    void *payload = NULL;
+    void *packetHeader = malloc(sizeof(int) * 2);
+    void *packetPayload = NULL;
     int nread;
 
     while (CONNECTION == 1) {
@@ -70,55 +71,40 @@ void *handle_connection(void *pipeHandleClient) {
         }
 
         // leggo l'header
-        CHECK_CONNECTION(header, pipeTask[1], fileDescriptor, sizeof(int));
-        int id = *((int *) header);
+        CHECK_CONNECTION(packetHeader, pipeTask[1], fileDescriptor, sizeof(int) * 2);
+        int packetID = *((int *) packetHeader);
+        int packetSize = *((int *) packetHeader + 1);
 
-        CHECK_CONNECTION(header, pipeTask[1], fileDescriptor, sizeof(int));
-        int length = *((int *) header);
-        payload = malloc(length);
+        // printf("packet id %d\n", packetID);
+        // printf("packet size %d\n", packetSize);
+
+        packetPayload = malloc(packetSize);
+
+        // CHECK_CONNECTION(packetHeader, pipeTask[1], fileDescriptor, sizeof(int));
+        // int packetSize = *((int *) packetHeader);
+        // packetPayload = malloc(packetSize);
         
         // leggo il paylod
-        CHECK_CONNECTION(payload, pipeTask[1], fileDescriptor, length);
-        char *testo = (char *) payload;
+        CHECK_CONNECTION(packetPayload, pipeTask[1], fileDescriptor, packetSize);
+        // void *message = (char *) packetPayload;
 
-        printf("ID -> %d\n", id);
-        printf("Length -> %d\n", length);
-        printf("Message -> %s\n", testo);
-
-        write(fileDescriptor, "Bye !", 5);
+        handlePacket(packetID, packetSize, (char *) packetPayload, fileDescriptor);
 
         // Attraverso la pipe mando indietro il fd al Thread Dispatcher
-        write(pipeTask[1], &fileDescriptor, sizeof(int));
-              
+        write(pipeTask[1], &fileDescriptor, sizeof(int));     
+  
+        free(packetPayload);
     }
 
     close(pipeTask[1]);
+    free(packetHeader);
+
     printf("VADO A SUICIDARMI\n");
     
     return NULL;
 }
 
-
-// /* Read "n" bytes from a descriptor */
-// ssize_t readn(int fd, void *ptr, size_t n) {
-//     size_t nleft;
-//     ssize_t nread;
-
-//     nleft = n;
-//     while (nleft > 0) {
-//         if ((nread = read(fd, ptr, nleft)) < 0) {
-//             if (nleft == n)
-//                 return -1; /* error, return -1 */
-//             else
-//                 break; /* error, return amount read so far */
-//         }
-//         else if (nread == 0)
-//             break; /* EOF */
-//         nleft -= nread;
-//         ptr += nread;
-//     }
-//     return (n - nleft); /* return >= 0 */
-// }
+   
 
 // /* Write "n" bytes to a descriptor */
 // ssize_t writen(int fd, void *ptr, size_t n) {

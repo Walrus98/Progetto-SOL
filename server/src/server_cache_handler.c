@@ -8,7 +8,7 @@
 static int REPLACEMENT_POLICY;
 
 static CacheFIFO cacheFIFO; 
-static CacheLRU cacheLRU; 
+// static CacheLRU cacheLRU; 
 
 void inizialize_policy(int replacementPolicy) {
     REPLACEMENT_POLICY = replacementPolicy;
@@ -19,13 +19,15 @@ char *replacement_file_cache() {
     switch (REPLACEMENT_POLICY) {
         case 0:
             return pop_fifo(&cacheFIFO);
-            break;
+            // break;
         case 1:
             break;
             // LRU
         default:
             break;
     }
+
+    return NULL;
 }
 
 void insert_file_cache(char *filePath) { // File file
