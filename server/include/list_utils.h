@@ -16,7 +16,6 @@ int contains(Node *list, void *value, void (*fun_compare) (void *value1, void *v
 
 int size(Node *list);
 void clear_list(Node **list);
-void print_list(Node *list);
 
 #endif
 

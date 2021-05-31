@@ -30,26 +30,24 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
         case OPEN_FILE:
 
-            // int packetID = *((int *) packetHeader);
-            // int packetSize = *((int *) packetHeader + 1);
             ;
-
             int fileLength = *((int *) payload);
-            char *fileName = payload + 4;
+            char *filePath = payload + 4;
             int flagCreate = *((int *) (payload + 4 + fileLength));
             int flagLock = *((int *) (payload + 4 + fileLength + 4));
 
-            printf("Header ID -> %d\n", packetID);
-            printf("Header Size -> %d\n", packetSize);
-            printf("Name Length -> %d\n", fileLength);
-            printf("Name -> %s\n", fileName);
-            printf("Flag Create -> %d\n", flagCreate);
-            printf("Flag Lock -> %d\n", flagLock);
+            // printf("Header ID -> %d\n", packetID);
+            // printf("Header Size -> %d\n", packetSize);
+            // printf("Name Length -> %d\n", fileLength);
+            // printf("Name -> %s\n", filePath);
+            // printf("Flag Create -> %d\n", flagCreate);
+            // printf("Flag Lock -> %d\n", flagLock);
 
-            // openfile(id, length, message);
-
-            write(fileDescriptor, "Bye !", 5);
+            if (openFile(fileDescriptor, filePath, flagCreate, flagLock)) {
+                write(fileDescriptor, "Apertura del File eseguita con successo!", 100);
+            } else {
+                write(fileDescriptor, "Impossibile aprire il File!", 100);
+            }
             break;
-
     }
 }

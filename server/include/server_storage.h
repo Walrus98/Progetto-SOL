@@ -3,7 +3,7 @@
 
 void create_storage(size_t fileCapacity, size_t storageCapacity, int storagePolicy);
 
-void insert_storage(char *fileName, char *fileContent);
+int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 
 void destroy_storage();
 

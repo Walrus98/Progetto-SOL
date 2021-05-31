@@ -15,7 +15,7 @@
 #include "../include/server_network_handler.h"
 #include "../include/server_packet_handler.h"
 
-#define CHECK_CONNECTION(buffer, pipeTask, fd, size)     \
+#define READ_PACKET(buffer, pipeTask, fd, size)     \
     nread = readn(fd, buffer, size);                     \
     if (nread == 0 || nread == -1)                       \
     {                                                    \
@@ -70,29 +70,24 @@ void *handle_connection(void *pipeHandleClient) {
             break;
         }
 
-        // leggo l'header
-        CHECK_CONNECTION(packetHeader, pipeTask[1], fileDescriptor, sizeof(int) * 2);
+        // leggo l'header del pacchetto
+        READ_PACKET(packetHeader, pipeTask[1], fileDescriptor, sizeof(int) * 2);
         int packetID = *((int *) packetHeader);
         int packetSize = *((int *) packetHeader + 1);
 
-        // printf("packet id %d\n", packetID);
-        // printf("packet size %d\n", packetSize);
-
+        // Alloco la dimensione del buffer payload
         packetPayload = malloc(packetSize);
 
-        // CHECK_CONNECTION(packetHeader, pipeTask[1], fileDescriptor, sizeof(int));
-        // int packetSize = *((int *) packetHeader);
-        // packetPayload = malloc(packetSize);
+        // leggo il paylod del pacchetto
+        READ_PACKET(packetPayload, pipeTask[1], fileDescriptor, packetSize);
         
-        // leggo il paylod
-        CHECK_CONNECTION(packetPayload, pipeTask[1], fileDescriptor, packetSize);
-        // void *message = (char *) packetPayload;
-
+        // Gestisco il pacchetto ricevuto
         handlePacket(packetID, packetSize, (char *) packetPayload, fileDescriptor);
 
         // Attraverso la pipe mando indietro il fd al Thread Dispatcher
         write(pipeTask[1], &fileDescriptor, sizeof(int));     
   
+        // Libero il payload allocato precedentemente
         free(packetPayload);
     }
 

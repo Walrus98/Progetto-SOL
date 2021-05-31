@@ -5,27 +5,21 @@
 
 #include "../include/server_cache_lru.h"
 
-void insert_lru(Node **cache, LRU value) {
+typedef struct FileLRU {
+    File file;
+    unsigned int used;
+} FileLRU;
+
+void insert_lru(Node **cache, File file) {
+    FileLRU fileLRU;
+    fileLRU.file = file;
+    fileLRU.used = 0;
+
+    add_tail(cache, &fileLRU);
+}
+
+void remove_lru(Node **cache) {
 
 }
 
-void insert_update_lru(Node **cache, LRU value) {
-
-}
-
-char *pop_lru(Node **cache) {
-
-}
-
-int contains_lru(Node *cache, LRU value) {
-
-}
-
-void destroy_lru(Node **cache) {
-
-}
-
-void print_lru(Node *cache) {
-
-}
 

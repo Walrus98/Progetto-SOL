@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../include/server_cache_handler.h"
 #include "../include/server_cache_fifo.h"
@@ -7,79 +8,62 @@
 
 static int REPLACEMENT_POLICY;
 
-static CacheFIFO cacheFIFO; 
-// static CacheLRU cacheLRU; 
+static Node* cacheFIFO = NULL;
+// static Node* cacheLRU;
 
 void inizialize_policy(int replacementPolicy) {
     REPLACEMENT_POLICY = replacementPolicy;
 }
 
-char *replacement_file_cache() {
-
+size_t set_file_size(File file) {
     switch (REPLACEMENT_POLICY) {
-        case 0:
-            return pop_fifo(&cacheFIFO);
-            // break;
-        case 1:
+        case FIFO_POLICY:
+            ;
+            size_t fileSize = strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t) + (size(file.fdList) * sizeof(int));
+            file.fileSize = fileSize;
+            return fileSize;
+        default:
+            break;    
+    }
+    return 0;
+
+}
+
+void insert_file_cache(File file) {
+    switch (REPLACEMENT_POLICY) {
+        case FIFO_POLICY:
+            insert_fifo(&cacheFIFO, file);
             break;
-            // LRU
+        case LRU_POLICY:
+            // insert_lru(&cacheLRU, file);
+            break;
         default:
             break;
     }
+}
 
+File *replacement_file_cache() {
+    switch (REPLACEMENT_POLICY) {
+        case FIFO_POLICY:
+            return pop_fifo(&cacheFIFO);
+        default:
+            break;
+    }
     return NULL;
 }
 
-void insert_file_cache(char *filePath) { // File file
+File *get_file_cache(char *filePath) {
     switch (REPLACEMENT_POLICY) {
-        case 0:
-            insert_fifo(&cacheFIFO, filePath); //file->filePath
-            break;
-        case 1:
-            break;
-        default:
-            break;
+        case FIFO_POLICY:
+            return get_file_fifo(cacheFIFO, filePath);   
     }
+    return NULL;
 }
 
-void insert_update_file_cache(char *filePath) { // File file
-    switch (REPLACEMENT_POLICY) {
-        case 0:
-            insert_update_fifo(&cacheFIFO, filePath); //file->filePath
-            break;
-        case 1:
-            break;
-        default:
-            break;
-    }
-}
-
-int contains_file_cache(char *filePath) { // File file
-    switch (REPLACEMENT_POLICY) {
-        case 0:
-            return contains_fifo(cacheFIFO, filePath); //file->filePath
-        case 1:
-            break;
-        default:
-            break;
-    }
-    return 0;
-}
-
-void destroy_cache() {
-    switch (REPLACEMENT_POLICY) {
-        case 0:
-            destroy_fifo(&cacheFIFO);
-        case 1:
-            break;
-        default:
-            break;
-    }
-}
 
 void print_cache() {
     switch (REPLACEMENT_POLICY) {
-        case 0:
+        case FIFO_POLICY:
             print_fifo(cacheFIFO);
         case 1:
             break;
@@ -87,3 +71,54 @@ void print_cache() {
             break;
     }
 }
+
+void destroy_cache() {
+
+    switch (REPLACEMENT_POLICY) {
+        case FIFO_POLICY:
+            destroy_fifo(&cacheFIFO);
+            break;
+        case 1:
+            break;
+        default:
+            break;
+    }
+}
+
+
+// File *replacement_file_cache() {
+
+//     switch (REPLACEMENT_POLICY) {
+//         case FIFO_POLICY:
+//             return pop_fifo(&cacheFIFO);
+//         default:
+//             break;
+//     }
+
+//     return NULL;
+// }
+
+// void insert_update_file_cache(char *filePath) { // File file
+//     switch (REPLACEMENT_POLICY) {
+//         case 0:
+//             insert_update_fifo(&cacheFIFO, filePath); //file->filePath
+//             break;
+//         case 1:
+//             break;
+//         default:
+//             break;
+//     }
+// }
+
+// int contains_file_cache(char *filePath) { // File file
+//     switch (REPLACEMENT_POLICY) {
+//         case 0:
+//             return contains_fifo(cacheFIFO, filePath); //file->filePath
+//         case 1:
+//             break;
+//         default:
+//             break;
+//     }
+//     return 0;
+// }
+
