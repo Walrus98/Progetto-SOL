@@ -6,8 +6,7 @@ INCLUDES	= -I .
 TARGETS		= server.o server_config.o utils.o server_storage.o server_cache_handler.o \
 			server_cache_fifo.o list_utils.o server_network.o server_network_dispatcher.o \
 			server_network_worker.o server_network_handler.o server_signal_handler.o \
-			server_packet_handler.o
-# icl_hash.o
+			server_packet_handler.o icl_hash.o
 
 .PHONY: all test clean $(TARGETS)
 .SUFFIXES: .c .h .o
@@ -41,8 +40,8 @@ server_cache_fifo.o:
 list_utils.o:
 	gcc $(CFLAGS) -c server/src/list_utils.c -o build/obj/$@
 
-# icl_hash.o:
-# 	gcc $(CFLAGS) -c server/src/icl_hash.c -o build/obj/$@
+icl_hash.o:
+	gcc $(CFLAGS) -c server/src/icl_hash.c -o build/obj/$@
 
 server_network.o:
 	gcc $(CFLAGS) -pthread -c server/src/server_network.c -o build/obj/$@

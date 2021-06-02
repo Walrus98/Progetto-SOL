@@ -9,7 +9,7 @@
 static List packetBuffer;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t  cond  = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t cond  = PTHREAD_COND_INITIALIZER;
 
 // Aggiungo un pacchetto alla lista dei pacchetti
 void pushPacket(int fileDescriptor) {    

@@ -66,6 +66,7 @@ int main(void) {
     for (int i = 0; i < 1; i++) {
         write(fd_skt, header, sizeof(int) * 2);
         write(fd_skt, payload, payloadLength);
+        // sleep(3);
     }
 
     for (int i = 0; i < 1; i++) {
@@ -74,6 +75,9 @@ int main(void) {
 
 
     printf("Client got : %s\n", buf);
+
+    sleep(5);
+
     close(fd_skt);
 
     return 0;

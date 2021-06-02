@@ -19,7 +19,7 @@ size_t get_file_size(File file) {
     switch (REPLACEMENT_POLICY) {
         case FIFO_POLICY:
             ;
-            return strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t);
+            return strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t) + sizeof(File); // + (size(file.fdList) * sizeof(int));
         default:
             break;    
     }

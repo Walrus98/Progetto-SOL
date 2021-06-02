@@ -5,6 +5,8 @@ void create_storage(size_t fileCapacity, size_t storageCapacity, int storagePoli
 
 int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 
+void removeKey();
+
 void destroy_storage();
 
 void print_storage();

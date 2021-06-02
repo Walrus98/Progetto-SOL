@@ -17,6 +17,8 @@ void insert_fifo(Node **cache, File file) {
 	strcpy(fileContent, file.fileContent);
 	newFile->fileContent = fileContent;
 
+	// newFile->fdList = file.fdList;
+
 	newFile->fileSize = file.fileSize;
 
 	add_tail(cache, newFile);
@@ -33,8 +35,6 @@ File *get_file_fifo(Node *cache, char *filePath) {
 		if (strcmp(filePath, file->filePath) == 0) {
 			return file;
 		}
-		// if (strcmp(filePath, file->filePath) == 0) {
-		// }
 	}
 	return NULL;
 }
@@ -48,6 +48,11 @@ void print_fifo(Node *cache) {
 		printf("File Path %s\n", file->filePath);
 		printf("File Content %s\n", file->fileContent);
 		printf("File Size %ld\n", file->fileSize);
+		
+		// for (Node *temp = file->fdList; temp != NULL; temp = temp->next) {
+		// 	int *fd = temp->value;
+		// 	printf("File Descriptor: %d", *fd);
+		// } 
 		printf("\n");
 	}
 }
@@ -62,6 +67,14 @@ void destroy_fifo(Node **cache) {
 
 	for (Node *temp = *cache; temp != NULL; temp = temp->next) {
 		File *file = (File *) temp->value;
+		free(file->filePath);
+		free(file->fileContent);
+
+		// for (Node *fdTemp = file->fdList; fdTemp != NULL; fdTemp = fdTemp->next) {
+		// 	free(fdTemp->value);
+		// }
+		// clear_list(&(file->fdList));
+
 		free(file);
 	}
 

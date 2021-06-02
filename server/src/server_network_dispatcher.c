@@ -160,7 +160,6 @@ void *dispatch_connection(void *dispatcherArgument) {
 
                     // Altrimenti significa che un client ha inviato un pacchetto al server  
                     } else {
-                        
                         pushPacket(fd);
                         FD_CLR(fd, &set);
                         fd_num = aggiorna(set, fd_num);

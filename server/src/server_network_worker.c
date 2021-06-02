@@ -21,6 +21,7 @@
     {                                                    \
         int connectedClients = -1;                       \
         write(pipeTask, &connectedClients, sizeof(int)); \
+        handleDisconnect(fd);                            \
         close(fd);                                       \
         continue;                                        \
     }
