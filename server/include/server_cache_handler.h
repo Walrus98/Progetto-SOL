@@ -9,15 +9,16 @@
 typedef struct File {
     char *filePath;
     char *fileContent;
-    Node *fdList;
+    // Node *fdList;
     size_t fileSize;
 } File;
 
 void inizialize_policy(int replacementPolicy);
 
-size_t set_file_size(File file);
+size_t get_file_size(File file);
 
 void insert_file_cache(File file);
+
 File *replacement_file_cache();
 
 File *get_file_cache(char *filePath);

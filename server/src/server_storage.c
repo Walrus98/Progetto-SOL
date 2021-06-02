@@ -16,7 +16,6 @@ static size_t CURRENT_STORAGE_SIZE = 0;
 
 void create_storage(size_t fileCapacity, size_t storageCapacity, int replacementPolicy);
 void insert_storage(File file);
-File *get_file(char *filePath);
 void print_storage();
 void destroy_storage();
 
@@ -42,10 +41,18 @@ void create_storage(size_t fileCapacity, size_t storageCapacity, int replacement
 
 int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
 
-    File *file = get_file(filePath);
+    File *file = get_file_cache(filePath);
+
 
     if ((flagCreate == 1 && file != NULL) || (flagCreate == 0 && file == NULL)) {
-        printf("ERRORE");
+
+        printf("=========================\n");
+        printf("path %s\n", file->filePath);
+        printf("content %s\n", file->fileContent);
+        printf("size %ld\n", file->fileSize);
+
+
+        // printf("ERRORE");
         return 0;
     }
 
@@ -54,21 +61,19 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
         File newFile;
         newFile.filePath = filePath;
         newFile.fileContent = "";
-        newFile.fdList = NULL;
-        add_head(&(newFile.fdList), &fileDescriptor);
-        newFile.fileSize = set_file_size(newFile);         
+        // newFile.fdList = NULL;
+        // add_head(&(newFile.fdList), &fileDescriptor);
+        newFile.fileSize = get_file_size(newFile);         
 
         insert_storage(newFile);
         
-        // print_storage();
-
         return 1;
     }
 
     if (flagCreate == 0 && file != NULL) {
 
-        add_head(&(file->fdList), &fileDescriptor);
-        file->fileSize = set_file_size(*file);
+        // add_head(&(file->fdList), &fileDescriptor);
+        file->fileSize = get_file_size(*file);
 
         return 1;
     }
@@ -105,12 +110,6 @@ void insert_storage(File file) {
 
     CURRENT_FILE_AMOUNT++;
     CURRENT_STORAGE_SIZE += file.fileSize;
-
-}
-
-
-File *get_file(char *filePath) {
-    return get_file_cache(filePath);
 }
 
 void print_storage() {

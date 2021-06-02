@@ -15,13 +15,11 @@ void inizialize_policy(int replacementPolicy) {
     REPLACEMENT_POLICY = replacementPolicy;
 }
 
-size_t set_file_size(File file) {
+size_t get_file_size(File file) {
     switch (REPLACEMENT_POLICY) {
         case FIFO_POLICY:
             ;
-            size_t fileSize = strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t) + (size(file.fdList) * sizeof(int));
-            file.fileSize = fileSize;
-            return fileSize;
+            return strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t);
         default:
             break;    
     }

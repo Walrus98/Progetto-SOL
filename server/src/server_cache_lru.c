@@ -11,11 +11,14 @@ typedef struct FileLRU {
 } FileLRU;
 
 void insert_lru(Node **cache, File file) {
-    FileLRU fileLRU;
-    fileLRU.file = file;
-    fileLRU.used = 0;
 
-    add_tail(cache, &fileLRU);
+    FileLRU *newFile = (FileLRU *) malloc(sizeof(FileLRU));
+    newFile->file.filePath = file.filePath;
+	newFile->file.fileContent = file.fileContent;
+	newFile->file.fileSize = file.fileSize;
+    newFile->used = 0;
+
+    add_tail(cache, newFile);
 }
 
 void remove_lru(Node **cache) {

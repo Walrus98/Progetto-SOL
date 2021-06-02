@@ -8,12 +8,15 @@
 void insert_fifo(Node **cache, File file) {
 
 	File *newFile = (File *) malloc(sizeof(File));
-	newFile->filePath = file.filePath;
-	newFile->fileContent = file.fileContent;
 
+	char *filePath = malloc(sizeof(char) * (strlen(file.filePath) + 1));
+	strcpy(filePath, file.filePath);
+	newFile->filePath = filePath;
 
+	char *fileContent = malloc(sizeof(char) * (strlen(file.fileContent) + 1));
+	strcpy(fileContent, file.fileContent);
+	newFile->fileContent = fileContent;
 
-	newFile->fdList = file.fdList;
 	newFile->fileSize = file.fileSize;
 
 	add_tail(cache, newFile);
@@ -25,19 +28,12 @@ File *pop_fifo(Node **cache) {
 
 File *get_file_fifo(Node *cache, char *filePath) {
 	for (; cache != NULL; cache = cache->next) {
-		File *tempFile = (File *) cache->value;
+		File *file = (File *) cache->value;
 
-		
-		if (tempFile != NULL) {
-			// printf("File Path %s\n", filePath);
-			printf("File Path La Vendetta %s\n", tempFile->filePath);
-			printf("File Content %s\n", tempFile->fileContent);
-			printf("File Size %ld\n", tempFile->fileSize);
-			printf("\n");
+		if (strcmp(filePath, file->filePath) == 0) {
+			return file;
 		}
-
-		// if (strcmp(filePath, tempFile->filePath) == 0) {
-		// 	return (File *) cache->value;
+		// if (strcmp(filePath, file->filePath) == 0) {
 		// }
 	}
 	return NULL;
@@ -58,9 +54,14 @@ void print_fifo(Node *cache) {
 
 void destroy_fifo(Node **cache) {
 	
+	// for (Node *temp = *cache; temp != NULL; temp = temp->next) {
+	// 	File *file = ((File *) temp->value);
+	// 	clear_list(&(file->fdList));
+	// 	free(file);
+	// }
+
 	for (Node *temp = *cache; temp != NULL; temp = temp->next) {
-		File *file = ((File *) temp->value);
-		clear_list(&(file->fdList));
+		File *file = (File *) temp->value;
 		free(file);
 	}
 
