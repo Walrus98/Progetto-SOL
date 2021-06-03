@@ -40,7 +40,7 @@ int main(void) {
     // char contentFile[13] = "hello world!";
     // int contentLength = strlen(contentFile) + 1; 
 
-    int ocreate = 1;
+    int ocreate = 0;
     int olock = 0;
 
     int payloadLength = sizeof(int) + nameLength + sizeof(int) +  sizeof(int); 
@@ -63,20 +63,20 @@ int main(void) {
 
 
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 2; i++) {
         write(fd_skt, header, sizeof(int) * 2);
         write(fd_skt, payload, payloadLength);
         // sleep(3);
     }
 
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < 2; i++) {
         read(fd_skt, buf, N);
     }
 
 
     printf("Client got : %s\n", buf);
 
-    sleep(5);
+    // sleep(5);
 
     close(fd_skt);
 

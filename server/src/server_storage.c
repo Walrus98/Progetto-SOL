@@ -25,6 +25,10 @@ void insert_storage(File file);
 void print_storage();
 void destroy_storage();
 
+void add_client_files(int fileDescriptor, File file);
+void remove_client_files(int fileDescriptor);
+void print_client_files();
+
 int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 
 void create_storage(size_t fileCapacity, size_t storageCapacity, int replacementPolicy) {
@@ -33,7 +37,7 @@ void create_storage(size_t fileCapacity, size_t storageCapacity, int replacement
 
     inizialize_policy(replacementPolicy);
 
-    clientFiles = icl_hash_create(100, NULL, NULL);
+    clientFiles = icl_hash_create(100, NULL, int_compare);
 }
 
 // - int openFile(const char* pathname, int flags)
@@ -52,9 +56,6 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
     File *file = get_file_cache(filePath);
 
     if ((flagCreate == 1 && file != NULL) || (flagCreate == 0 && file == NULL)) {
-
-        printf("File Descriptor: %d\n", fileDescriptor);
-        print_cache();
         return 0;
     }
 
@@ -65,87 +66,21 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
         newFile.fileContent = "";
         newFile.fileSize = get_file_size(newFile);  
 
-        // newFile.fdList = NULL;
+        insert_storage(newFile); 
 
-        LOCK(&clientFilesMutex);
+        add_client_files(fileDescriptor, newFile);
 
-        int *fd = (int *) malloc(sizeof(int));
-        *fd = fileDescriptor;
+        print_client_files(); 
 
-        Node *fdList = (Node *) icl_hash_find(clientFiles, fd);
-
-        if (fdList == NULL) {
-            Node *newFdList = NULL;            
-            
-            char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
-            strcpy(filePath, newFile.filePath);
-
-            add_head(&newFdList, filePath);
-
-            icl_hash_insert(clientFiles, fd, newFdList);
-        } else {
-
-            char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
-            strcpy(filePath, newFile.filePath);
-            
-            add_head(&fdList, filePath);
-            
-            // prova
-            // icl_hash_delete(clientFiles, fd, free, free);
-            // icl_hash_insert(clientFiles, fd, fdList);
-        }
-
-
-        UNLOCK(&clientFilesMutex);
-
-        // int *fd = (int *) malloc(sizeof(int));
-        // *fd = fileDescriptor;
-        // add_head(&(newFile.fdList), fd);
-        
-
-        insert_storage(newFile);
-        
-        return 1;
+        return 1;    
     }
 
     if (flagCreate == 0 && file != NULL) {
 
-        // add_head(&(file->fdList), &fileDescriptor);
-
+        add_client_files(fileDescriptor, *file);
         
-        file->fileSize = get_file_size(*file);
+        print_client_files();
         
-        LOCK(&clientFilesMutex);
-        
-        int *fd = (int *) malloc(sizeof(int));
-        *fd = fileDescriptor;
-
-        Node *fdList = (Node *) icl_hash_find(clientFiles, fd);
-
-        if (fdList == NULL) {
-            Node *newFdList = NULL;            
-            
-            char *filePath = malloc(sizeof(char) * (strlen(file->filePath) + 1));
-            strcpy(filePath, file->filePath);
-
-            add_head(&newFdList, filePath);
-
-            icl_hash_insert(clientFiles, fd, newFdList);
-        } else {
-
-            char *filePath = malloc(sizeof(char) * (strlen(file->filePath) + 1));
-            strcpy(filePath, file->filePath);
-            
-            add_head(&fdList, filePath);
-            
-            // prova
-            // icl_hash_delete(clientFiles, fd, NULL, free);
-            // icl_hash_insert(clientFiles, fd, fdList);
-        }
-
-
-        UNLOCK(&clientFilesMutex);
-
         return 1;
     }
 
@@ -191,6 +126,7 @@ void destroy_storage() {
 
     icl_entry_t *bucket, *curr;
 
+    // Itero tutta la mappa e cancello le stringhe
     for (int i = 0; i < clientFiles->nbuckets; i++) {
         bucket = clientFiles->buckets[i];
         for (curr = bucket; curr != NULL;) {
@@ -203,22 +139,109 @@ void destroy_storage() {
         }
     }
 
-    icl_hash_destroy(clientFiles, free, free);
+    // Itero tutta la mappa e cancello i nodi
+    for (int i = 0; i < clientFiles->nbuckets; i++) {
+        bucket = clientFiles->buckets[i];
+        for (curr = bucket; curr != NULL;) {
+            if (curr->key) {
+                for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
+                    Node *test = curr->data;
+                    curr = curr->next;
+                    free(test);
+                }
+            }
+            curr = curr->next;
+        }
+    }
+  
+    // Cancello tutte le chiavi della mappa
+    icl_hash_destroy(clientFiles, free, NULL);
     destroy_cache();
 }
 
-void removeKey(int fileDescriptor) {
+void add_client_files(int fileDescriptor, File file) {
+    
+    LOCK(&clientFilesMutex);
 
-    printf("YOLO!\n");
+   
+    Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    char *path = malloc(sizeof(char) * (strlen(file.filePath) + 1));
+    strcpy(path, file.filePath);
+
+    if (fdList == NULL) {      
+        Node *newFdList = NULL;
+
+        int *fd = (int *) malloc(sizeof(int));
+        *fd = fileDescriptor;
+        
+        add_tail(&newFdList, path);
+
+        icl_hash_insert(clientFiles, fd, newFdList);
+    } else {
+
+        add_tail(&fdList, path);
+
+//  * @param ht -- the hash table
+//  * @param key -- the key of the new item
+//  * @param data -- pointer to the new item's data
+//  * @param olddata -- pointer to the old item's data (set upon return)
+ 
+        // icl_hash_update_insert(clientFiles, fd, fdList, (void *) &fdList);
+        // icl_hash_delete(clientFiles, fd, free, free);
+        // icl_hash_insert(clientFiles, fd, fdList);
+    }
+    
+    UNLOCK(&clientFilesMutex);
+}
+
+
+// Elimino la entry sulla tabella dei client che hanno fatto la open sui file
+void remove_client_files(int fileDescriptor) {
+
+    LOCK(&clientFilesMutex);
 
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
 
+    // cancello le stringhe associate ai nodi
     for (Node *curr = fdList; curr != NULL; curr = curr->next) {
         free(curr->value);
     }
 
-    icl_hash_delete(clientFiles, &fileDescriptor, free, free);
+    // cancello i nodi
+    for (Node *curr = fdList; curr != NULL; ) {
+        Node *temp = curr;
+        curr = curr->next;
+        free(temp);
+    }
 
+    // cancello la chiavi
+    icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
+
+    UNLOCK(&clientFilesMutex);
+
+    print_client_files();
+}
+
+void print_client_files() {
+    icl_entry_t *bucket, *curr;
+
+    printf("MAPPA:\n");
+    
+    for (int i = 0; i < clientFiles->nbuckets; i++) {
+        bucket = clientFiles->buckets[i];
+        for (curr = bucket; curr != NULL;) {
+            if (curr->key) {
+                int *fd = curr->key;
+                printf("%d -> ", *fd);
+                for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
+                    printf("%s ", (char *) temp->value);
+                }
+                printf("\n");
+            }
+            curr = curr->next;
+        }
+    }
 }
 
 
@@ -244,3 +267,31 @@ void removeKey(int fileDescriptor) {
 
 //     return 0;
 // }
+
+
+        // if (fdList == NULL) {
+        //     Node *newFdList = NULL;            
+            
+        //     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
+        //     strcpy(filePath, newFile.filePath);
+
+        //     add_head(&newFdList, filePath);
+
+        //     icl_hash_insert(clientFiles, fd, newFdList);
+        // } else {
+
+        //     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
+        //     strcpy(filePath, newFile.filePath);
+            
+        //     add_head(&fdList, filePath);
+            
+        //     // prova
+        //     // icl_hash_delete(clientFiles, fd, free, free);
+        //     // icl_hash_insert(clientFiles, fd, fdList);
+        // }
+        // int *fd = (int *) malloc(sizeof(int));
+        // *fd = fileDescriptor;
+        // add_head(&(newFile.fdList), fd);    
+
+        // add_head(&(file->fdList), &fileDescriptor);        
+        // file->fileSize = get_file_size(*file);

@@ -49,13 +49,9 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
                 write(fileDescriptor, "Impossibile aprire il File!", 100);
             }
             break;
-
-        case DISCONNECT:
-
-            break;
     }
 }
  
 void handleDisconnect(int fileDescriptor) {
-    removeKey(fileDescriptor);        
+    remove_client_files(fileDescriptor);        
 }

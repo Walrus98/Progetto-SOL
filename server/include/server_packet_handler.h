@@ -10,7 +10,6 @@
 #define UNLOCK_FILE 6
 #define CLOSE_FILE 6
 #define REMOVE_FILE 7
-#define DISCONNECT 8
 
 void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor);
 
