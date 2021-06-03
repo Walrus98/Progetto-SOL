@@ -43,10 +43,20 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             // printf("Flag Create -> %d\n", flagCreate);
             // printf("Flag Lock -> %d\n", flagLock);
 
-            if (openFile(fileDescriptor, filePath, flagCreate, flagLock)) {
-                write(fileDescriptor, "Apertura del File eseguita con successo!", 100);
-            } else {
-                write(fileDescriptor, "Impossibile aprire il File!", 100);
+            int response = openFile(fileDescriptor, filePath, flagCreate, flagLock);
+
+            switch (response) {
+                case 1:
+                    write(fileDescriptor, "Apertura del File eseguita con successo!", 100);
+                    break;
+                case 0:
+                    write(fileDescriptor, "Impossibile aprire il File!", 100);
+                    break;
+                case -1:
+                    write(fileDescriptor, "Impossibile eseguire open multiple sullo stesso file!", 100);
+                    break;
+                default:
+                    break;
             }
             break;
     }

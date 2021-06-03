@@ -25,7 +25,7 @@ void insert_storage(File file);
 void print_storage();
 void destroy_storage();
 
-void add_client_files(int fileDescriptor, File file);
+int add_client_files(int fileDescriptor, File file);
 void remove_client_files(int fileDescriptor);
 void print_client_files();
 
@@ -68,20 +68,11 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
 
         insert_storage(newFile); 
 
-        add_client_files(fileDescriptor, newFile);
-
-        print_client_files(); 
-
-        return 1;    
+        return add_client_files(fileDescriptor, newFile);   
     }
 
     if (flagCreate == 0 && file != NULL) {
-
-        add_client_files(fileDescriptor, *file);
-        
-        print_client_files();
-        
-        return 1;
+        return add_client_files(fileDescriptor, *file);
     }
 
     return 0;
@@ -122,6 +113,104 @@ void print_storage() {
     print_cache();
 }
 
+int add_client_files(int fileDescriptor, File file) {
+    
+    // Acquisico la lock sulla mappa
+    LOCK(&clientFilesMutex);
+   
+    // Cerco la lista del file descriptor passato per parametro
+    Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    // Alloco la memoria necessaria per salvare il nome del file nell'heap
+    char *path = malloc(sizeof(char) * (strlen(file.filePath) + 1));
+    // Copio il contenuto del nome del file nella stringa appena creata
+    strcpy(path, file.filePath);
+
+    // Se la lista è NULL, significa che l'utente ha fatto la sua prima open
+    if (fdList == NULL) {      
+        // Inizializzo la lista dell'utente
+        Node *newFdList = NULL;
+
+        // ALloco nell'heap il file descriptor dell'utente
+        int *fd = (int *) malloc(sizeof(int));
+        // Assegno alla variabile il file descriptor dell'utente passato per parametro
+        *fd = fileDescriptor;
+
+        // Aggiungo il nome della lista alla stringa
+        add_tail(&newFdList, path);
+
+        // Inserisco la prima entry nella mappa che ha come chiave, il fd dell'utente e come valore la lista di file path a cui ha fatto la open
+        icl_hash_insert(clientFiles, fd, newFdList);
+
+    // Controllo che il client non abbia richiesto una open su un file già presente nella lista
+    } else if (!contains(fdList, path)) {
+        // Se il file non è presente, allora lo aggiungo
+        add_tail(&fdList, path);
+    // Se il client ha richiesto la open su un file che aveva già aperto precedentemente
+    } else {
+        // Libero la memoria allocata per la stringa
+        free(path);
+        // Rilascio la lock
+        UNLOCK(&clientFilesMutex);
+        
+        // Restituisco un messaggio di errore
+        return -1;
+    }
+    
+    // L'operazione è andata a buon fine
+    UNLOCK(&clientFilesMutex);
+
+    return 1;
+}
+
+
+// Elimino la entry sulla tabella dei client che hanno fatto la open sui file
+void remove_client_files(int fileDescriptor) {
+
+    LOCK(&clientFilesMutex);
+
+    Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    // cancello le stringhe associate ai nodi
+    for (Node *curr = fdList; curr != NULL; curr = curr->next) {
+        free(curr->value);
+    }
+
+    // cancello i nodi
+    for (Node *curr = fdList; curr != NULL; ) {
+        Node *temp = curr;
+        curr = curr->next;
+        free(temp);
+    }
+
+    // cancello la chiavi
+    icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
+
+    UNLOCK(&clientFilesMutex);
+
+}
+
+void print_client_files() {
+    icl_entry_t *bucket, *curr;
+
+    printf("MAPPA:\n");
+    
+    for (int i = 0; i < clientFiles->nbuckets; i++) {
+        bucket = clientFiles->buckets[i];
+        for (curr = bucket; curr != NULL;) {
+            if (curr->key) {
+                int *fd = curr->key;
+                printf("%d -> ", *fd);
+                for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
+                    printf("%s ", (char *) temp->value);
+                }
+                printf("\n");
+            }
+            curr = curr->next;
+        }
+    }
+}
+
 void destroy_storage() {
 
     icl_entry_t *bucket, *curr;
@@ -158,92 +247,6 @@ void destroy_storage() {
     icl_hash_destroy(clientFiles, free, NULL);
     destroy_cache();
 }
-
-void add_client_files(int fileDescriptor, File file) {
-    
-    LOCK(&clientFilesMutex);
-
-   
-    Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
-
-    char *path = malloc(sizeof(char) * (strlen(file.filePath) + 1));
-    strcpy(path, file.filePath);
-
-    if (fdList == NULL) {      
-        Node *newFdList = NULL;
-
-        int *fd = (int *) malloc(sizeof(int));
-        *fd = fileDescriptor;
-        
-        add_tail(&newFdList, path);
-
-        icl_hash_insert(clientFiles, fd, newFdList);
-    } else {
-
-        add_tail(&fdList, path);
-
-//  * @param ht -- the hash table
-//  * @param key -- the key of the new item
-//  * @param data -- pointer to the new item's data
-//  * @param olddata -- pointer to the old item's data (set upon return)
- 
-        // icl_hash_update_insert(clientFiles, fd, fdList, (void *) &fdList);
-        // icl_hash_delete(clientFiles, fd, free, free);
-        // icl_hash_insert(clientFiles, fd, fdList);
-    }
-    
-    UNLOCK(&clientFilesMutex);
-}
-
-
-// Elimino la entry sulla tabella dei client che hanno fatto la open sui file
-void remove_client_files(int fileDescriptor) {
-
-    LOCK(&clientFilesMutex);
-
-    Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
-
-    // cancello le stringhe associate ai nodi
-    for (Node *curr = fdList; curr != NULL; curr = curr->next) {
-        free(curr->value);
-    }
-
-    // cancello i nodi
-    for (Node *curr = fdList; curr != NULL; ) {
-        Node *temp = curr;
-        curr = curr->next;
-        free(temp);
-    }
-
-    // cancello la chiavi
-    icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
-
-    UNLOCK(&clientFilesMutex);
-
-    print_client_files();
-}
-
-void print_client_files() {
-    icl_entry_t *bucket, *curr;
-
-    printf("MAPPA:\n");
-    
-    for (int i = 0; i < clientFiles->nbuckets; i++) {
-        bucket = clientFiles->buckets[i];
-        for (curr = bucket; curr != NULL;) {
-            if (curr->key) {
-                int *fd = curr->key;
-                printf("%d -> ", *fd);
-                for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
-                    printf("%s ", (char *) temp->value);
-                }
-                printf("\n");
-            }
-            curr = curr->next;
-        }
-    }
-}
-
 
 // int
 // icl_hash_dump(FILE* stream, icl_hash_t* ht)

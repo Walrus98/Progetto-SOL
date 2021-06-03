@@ -43,13 +43,11 @@ int main(void) {
     int ocreate = 0;
     int olock = 0;
 
-    int payloadLength = sizeof(int) + nameLength + sizeof(int) +  sizeof(int); 
-
+    int payloadLength = sizeof(int) + nameLength + sizeof(int) +  sizeof(int);
 
     void *header = malloc(sizeof(int) * 2);
     memcpy(header, &id, sizeof(int));
     memcpy(header + 4, &payloadLength, sizeof(int));
-
     
     // payload
 
@@ -66,15 +64,11 @@ int main(void) {
     for (int i = 0; i < 2; i++) {
         write(fd_skt, header, sizeof(int) * 2);
         write(fd_skt, payload, payloadLength);
-        // sleep(3);
-    }
-
-    for (int i = 0; i < 2; i++) {
         read(fd_skt, buf, N);
+        printf("Client got : %s\n", buf);
     }
 
 
-    printf("Client got : %s\n", buf);
 
     // sleep(5);
 

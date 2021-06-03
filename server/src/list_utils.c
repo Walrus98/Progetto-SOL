@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 #include "../include/list_utils.h"
 #include "../include/server_cache_handler.h"
+
+#define STRING_SIZE 512
 
 void add_tail(Node **list, void *value) {
 
@@ -53,6 +56,15 @@ void *remove_head(Node **list) {
 // int contains(Node *list, void *value,  void (*fun_compare) (void *value1, void *value2, void *size)) {
 // 	return 0;
 // }
+
+int contains(Node *list, void *value) {
+	for (; list != NULL; list = list->next) {
+		if (strncmp((char *) list->value, (char *) value, STRING_SIZE) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 int size(Node *list) {
 	int index = 0;
