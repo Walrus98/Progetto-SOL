@@ -6,8 +6,6 @@
 #include "../include/list_utils.h"
 #include "../include/server_cache_handler.h"
 
-#define STRING_SIZE 512
-
 void add_tail(Node **list, void *value) {
 
     Node *newNode;
@@ -51,10 +49,6 @@ void *remove_head(Node **list) {
 }
 
 // void remove_value(Node **list, void *value, void (*fun_compare) (void *value1, void *value2, void *size)) {
-// }
-
-// int contains(Node *list, void *value,  void (*fun_compare) (void *value1, void *value2, void *size)) {
-// 	return 0;
 // }
 
 int contains(Node *list, void *value) {

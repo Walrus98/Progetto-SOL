@@ -1,6 +1,8 @@
 #ifndef LIST_UTIL_H
 #define LIST_UTIL_H
 
+#define STRING_SIZE 1024
+
 struct Node {
     void *value;
     struct Node *next;

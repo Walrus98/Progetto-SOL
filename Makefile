@@ -32,7 +32,7 @@ server_storage.o:
 	gcc $(CFLAGS) -c server/src/server_storage.c -o build/obj/$@
 
 server_cache_handler.o:
-	gcc $(CFLAGS) -c server/src/server_cache_handler.c -o build/obj/$@
+	gcc $(CFLAGS) -pthread -c server/src/server_cache_handler.c -o build/obj/$@
 
 server_cache_fifo.o:
 	gcc $(CFLAGS) -c server/src/server_cache_fifo.c -o build/obj/$@

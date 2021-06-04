@@ -20,13 +20,19 @@ static size_t CURRENT_STORAGE_SIZE = 0;
 static icl_hash_t *clientFiles;
 static pthread_mutex_t clientFilesMutex = PTHREAD_MUTEX_INITIALIZER;
 
+typedef struct FileLock {
+    int *lock;
+    char *path;
+} FileLock;
+
 void create_storage(size_t fileCapacity, size_t storageCapacity, int replacementPolicy);
 void insert_storage(File file);
 void print_storage();
 void destroy_storage();
 
-int add_client_files(int fileDescriptor, File file);
+int add_client_files(int fileDescriptor, File file, int flagLock);
 void remove_client_files(int fileDescriptor);
+int contains_client_files(Node *fdList, char *path);
 void print_client_files();
 
 int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
@@ -68,11 +74,11 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
 
         insert_storage(newFile); 
 
-        return add_client_files(fileDescriptor, newFile);   
+        return add_client_files(fileDescriptor, newFile, flagLock);   
     }
 
     if (flagCreate == 0 && file != NULL) {
-        return add_client_files(fileDescriptor, *file);
+        return add_client_files(fileDescriptor, *file, flagLock);
     }
 
     return 0;
@@ -113,7 +119,7 @@ void print_storage() {
     print_cache();
 }
 
-int add_client_files(int fileDescriptor, File file) {
+int add_client_files(int fileDescriptor, File file, int flagLock) {
     
     // Acquisico la lock sulla mappa
     LOCK(&clientFilesMutex);
@@ -121,10 +127,17 @@ int add_client_files(int fileDescriptor, File file) {
     // Cerco la lista del file descriptor passato per parametro
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
 
-    // Alloco la memoria necessaria per salvare il nome del file nell'heap
+    // Alloco la memoria
+    FileLock *fileLock = (FileLock *) malloc(sizeof(FileLock));
+
+    int *lock = (int *) malloc(sizeof(int));
+    *lock = flagLock;
+    
     char *path = malloc(sizeof(char) * (strlen(file.filePath) + 1));
-    // Copio il contenuto del nome del file nella stringa appena creata
     strcpy(path, file.filePath);
+
+    fileLock->lock = lock;
+    fileLock->path = path;
 
     // Se la lista è NULL, significa che l'utente ha fatto la sua prima open
     if (fdList == NULL) {      
@@ -136,20 +149,21 @@ int add_client_files(int fileDescriptor, File file) {
         // Assegno alla variabile il file descriptor dell'utente passato per parametro
         *fd = fileDescriptor;
 
-        // Aggiungo il nome della lista alla stringa
-        add_tail(&newFdList, path);
+        add_tail(&newFdList, fileLock);
 
         // Inserisco la prima entry nella mappa che ha come chiave, il fd dell'utente e come valore la lista di file path a cui ha fatto la open
         icl_hash_insert(clientFiles, fd, newFdList);
 
     // Controllo che il client non abbia richiesto una open su un file già presente nella lista
-    } else if (!contains(fdList, path)) {
+    } else if (!contains_client_files(fdList, fileLock->path)) {
         // Se il file non è presente, allora lo aggiungo
-        add_tail(&fdList, path);
+        add_tail(&fdList, fileLock);
     // Se il client ha richiesto la open su un file che aveva già aperto precedentemente
     } else {
-        // Libero la memoria allocata per la stringa
+        // Libero la memoria allocata
         free(path);
+        free(lock);
+        free(fileLock);
         // Rilascio la lock
         UNLOCK(&clientFilesMutex);
         
@@ -159,6 +173,8 @@ int add_client_files(int fileDescriptor, File file) {
     
     // L'operazione è andata a buon fine
     UNLOCK(&clientFilesMutex);
+
+    print_client_files();
 
     return 1;
 }
@@ -171,9 +187,12 @@ void remove_client_files(int fileDescriptor) {
 
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
 
-    // cancello le stringhe associate ai nodi
+    // cancello il valore associato ai nodi
     for (Node *curr = fdList; curr != NULL; curr = curr->next) {
-        free(curr->value);
+        FileLock *fileLock = (FileLock *) curr->value;
+        free(fileLock->path);
+        free(fileLock->lock);
+        free(fileLock);
     }
 
     // cancello i nodi
@@ -190,6 +209,16 @@ void remove_client_files(int fileDescriptor) {
 
 }
 
+int contains_client_files(Node *fdList, char *path) {
+	for (; fdList != NULL; fdList = fdList->next) {
+		FileLock *fileLock = (FileLock *) fdList->value;        
+        if (strncmp(fileLock->path, path, STRING_SIZE) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 void print_client_files() {
     icl_entry_t *bucket, *curr;
 
@@ -202,7 +231,9 @@ void print_client_files() {
                 int *fd = curr->key;
                 printf("%d -> ", *fd);
                 for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
-                    printf("%s ", (char *) temp->value);
+                    // printf("%s ", (char *) temp->value);
+                    FileLock *fileLock = (FileLock *) temp->value;
+                    printf("[%s, %d] ", fileLock->path, *(fileLock->lock));
                 }
                 printf("\n");
             }
@@ -215,13 +246,16 @@ void destroy_storage() {
 
     icl_entry_t *bucket, *curr;
 
-    // Itero tutta la mappa e cancello le stringhe
+    // Itero tutta la mappa e cancello il fileLock
     for (int i = 0; i < clientFiles->nbuckets; i++) {
         bucket = clientFiles->buckets[i];
         for (curr = bucket; curr != NULL;) {
             if (curr->key) {
                 for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
-                    free(temp->value);
+                    FileLock *fileLock = (FileLock *) temp->value;
+                    free(fileLock->path);
+                    free(fileLock->lock);
+                    free(fileLock);
                 }
             }
             curr = curr->next;
@@ -271,30 +305,29 @@ void destroy_storage() {
 //     return 0;
 // }
 
+// if (fdList == NULL) {
+//     Node *newFdList = NULL;            
 
-        // if (fdList == NULL) {
-        //     Node *newFdList = NULL;            
-            
-        //     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
-        //     strcpy(filePath, newFile.filePath);
+//     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
+//     strcpy(filePath, newFile.filePath);
 
-        //     add_head(&newFdList, filePath);
+//     add_head(&newFdList, filePath);
 
-        //     icl_hash_insert(clientFiles, fd, newFdList);
-        // } else {
+//     icl_hash_insert(clientFiles, fd, newFdList);
+// } else {
 
-        //     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
-        //     strcpy(filePath, newFile.filePath);
-            
-        //     add_head(&fdList, filePath);
-            
-        //     // prova
-        //     // icl_hash_delete(clientFiles, fd, free, free);
-        //     // icl_hash_insert(clientFiles, fd, fdList);
-        // }
-        // int *fd = (int *) malloc(sizeof(int));
-        // *fd = fileDescriptor;
-        // add_head(&(newFile.fdList), fd);    
+//     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
+//     strcpy(filePath, newFile.filePath);
 
-        // add_head(&(file->fdList), &fileDescriptor);        
-        // file->fileSize = get_file_size(*file);
+//     add_head(&fdList, filePath);
+
+//     // prova
+//     // icl_hash_delete(clientFiles, fd, free, free);
+//     // icl_hash_insert(clientFiles, fd, fdList);
+// }
+// int *fd = (int *) malloc(sizeof(int));
+// *fd = fileDescriptor;
+// add_head(&(newFile.fdList), fd);    
+
+// add_head(&(file->fdList), &fileDescriptor);        
+// file->fileSize = get_file_size(*file);

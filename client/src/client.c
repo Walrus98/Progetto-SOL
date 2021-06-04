@@ -41,7 +41,7 @@ int main(void) {
     // int contentLength = strlen(contentFile) + 1; 
 
     int ocreate = 0;
-    int olock = 0;
+    int olock = 1;
 
     int payloadLength = sizeof(int) + nameLength + sizeof(int) +  sizeof(int);
 
@@ -66,6 +66,7 @@ int main(void) {
         write(fd_skt, payload, payloadLength);
         read(fd_skt, buf, N);
         printf("Client got : %s\n", buf);
+        sleep(3);
     }
 
 
