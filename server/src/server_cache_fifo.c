@@ -15,11 +15,11 @@ void insert_fifo(Node **cache, File file) {
 
 	char *fileContent = malloc(sizeof(char) * (strlen(file.fileContent) + 1));
 	strcpy(fileContent, file.fileContent);
+
 	newFile->fileContent = fileContent;
-
-	// newFile->fdList = file.fdList;
-
+	
 	newFile->fileSize = file.fileSize;
+	newFile->locked = file.locked;
 
 	add_tail(cache, newFile);
 }
@@ -49,32 +49,16 @@ void print_fifo(Node *cache) {
 		printf("File Content %s\n", file->fileContent);
 		printf("File Size %ld\n", file->fileSize);
 		
-		// for (Node *temp = file->fdList; temp != NULL; temp = temp->next) {
-		// 	int *fd = temp->value;
-		// 	printf("File Descriptor: %d", *fd);
-		// } 
 		printf("\n");
 	}
 }
 
 void destroy_fifo(Node **cache) {
 	
-	// for (Node *temp = *cache; temp != NULL; temp = temp->next) {
-	// 	File *file = ((File *) temp->value);
-	// 	clear_list(&(file->fdList));
-	// 	free(file);
-	// }
-
 	for (Node *temp = *cache; temp != NULL; temp = temp->next) {
 		File *file = (File *) temp->value;
 		free(file->filePath);
 		free(file->fileContent);
-
-		// for (Node *fdTemp = file->fdList; fdTemp != NULL; fdTemp = fdTemp->next) {
-		// 	free(fdTemp->value);
-		// }
-		// clear_list(&(file->fdList));
-
 		free(file);
 	}
 

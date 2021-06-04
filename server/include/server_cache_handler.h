@@ -9,8 +9,8 @@
 typedef struct File {
     char *filePath;
     char *fileContent;
-    // Node *fdList;
     size_t fileSize;
+    int locked;
 } File;
 
 void inizialize_policy(int replacementPolicy);

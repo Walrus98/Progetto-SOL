@@ -20,10 +20,10 @@ static size_t CURRENT_STORAGE_SIZE = 0;
 static icl_hash_t *clientFiles;
 static pthread_mutex_t clientFilesMutex = PTHREAD_MUTEX_INITIALIZER;
 
-typedef struct FileLock {
+typedef struct FileOpened {
     int *lock;
     char *path;
-} FileLock;
+} FileOpened;
 
 void create_storage(size_t fileCapacity, size_t storageCapacity, int replacementPolicy);
 void insert_storage(File file);
@@ -46,17 +46,6 @@ void create_storage(size_t fileCapacity, size_t storageCapacity, int replacement
     clientFiles = icl_hash_create(100, NULL, int_compare);
 }
 
-// - int openFile(const char* pathname, int flags)
-// Richiesta di apertura o di creazione di un file. La semantica della openFile dipende dai flags passati come secondo
-// argomento che possono essere O_CREATE ed O_LOCK. Se viene passato il flag O_CREATE ed il file esiste già
-// memorizzato nel server, oppure il file non esiste ed il flag O_CREATE non è stato specificato, viene ritornato un
-// errore. In caso di successo, il file viene sempre aperto in lettura e scrittura, ed in particolare le scritture possono
-// avvenire solo in append. Se viene passato il flag O_LOCK (eventualmente in OR con O_CREATE) il file viene
-// aperto e/o creato in modalità locked, che vuol dire che l’unico che può leggere o scrivere il file ‘pathname’ è il
-// processo che lo ha aperto. Il flag O_LOCK può essere esplicitamente resettato utilizzando la chiamata unlockFile,
-// descritta di seguito.
-// Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene settato opportunamente.
-
 int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
 
     File *file = get_file_cache(filePath);
@@ -70,7 +59,8 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
         File newFile;
         newFile.filePath = filePath;
         newFile.fileContent = "";
-        newFile.fileSize = get_file_size(newFile);  
+        newFile.fileSize = get_file_size(newFile); 
+        newFile.locked = flagLock;
 
         insert_storage(newFile); 
 
@@ -78,6 +68,12 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
     }
 
     if (flagCreate == 0 && file != NULL) {
+        if (file->locked == 1) {
+            return -2;
+        }
+        if (flagLock == 1) {
+            file->locked = 1;
+        }
         return add_client_files(fileDescriptor, *file, flagLock);
     }
 
@@ -128,7 +124,7 @@ int add_client_files(int fileDescriptor, File file, int flagLock) {
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
 
     // Alloco la memoria
-    FileLock *fileLock = (FileLock *) malloc(sizeof(FileLock));
+    FileOpened *fileOpened = (FileOpened *) malloc(sizeof(FileOpened));
 
     int *lock = (int *) malloc(sizeof(int));
     *lock = flagLock;
@@ -136,8 +132,8 @@ int add_client_files(int fileDescriptor, File file, int flagLock) {
     char *path = malloc(sizeof(char) * (strlen(file.filePath) + 1));
     strcpy(path, file.filePath);
 
-    fileLock->lock = lock;
-    fileLock->path = path;
+    fileOpened->lock = lock;
+    fileOpened->path = path;
 
     // Se la lista è NULL, significa che l'utente ha fatto la sua prima open
     if (fdList == NULL) {      
@@ -149,21 +145,21 @@ int add_client_files(int fileDescriptor, File file, int flagLock) {
         // Assegno alla variabile il file descriptor dell'utente passato per parametro
         *fd = fileDescriptor;
 
-        add_tail(&newFdList, fileLock);
+        add_tail(&newFdList, fileOpened);
 
         // Inserisco la prima entry nella mappa che ha come chiave, il fd dell'utente e come valore la lista di file path a cui ha fatto la open
         icl_hash_insert(clientFiles, fd, newFdList);
 
     // Controllo che il client non abbia richiesto una open su un file già presente nella lista
-    } else if (!contains_client_files(fdList, fileLock->path)) {
+    } else if (!contains_client_files(fdList, fileOpened->path)) {
         // Se il file non è presente, allora lo aggiungo
-        add_tail(&fdList, fileLock);
+        add_tail(&fdList, fileOpened);
     // Se il client ha richiesto la open su un file che aveva già aperto precedentemente
     } else {
         // Libero la memoria allocata
         free(path);
         free(lock);
-        free(fileLock);
+        free(fileOpened);
         // Rilascio la lock
         UNLOCK(&clientFilesMutex);
         
@@ -189,10 +185,10 @@ void remove_client_files(int fileDescriptor) {
 
     // cancello il valore associato ai nodi
     for (Node *curr = fdList; curr != NULL; curr = curr->next) {
-        FileLock *fileLock = (FileLock *) curr->value;
-        free(fileLock->path);
-        free(fileLock->lock);
-        free(fileLock);
+        FileOpened *fileOpened = (FileOpened *) curr->value;
+        free(fileOpened->path);
+        free(fileOpened->lock);
+        free(fileOpened);
     }
 
     // cancello i nodi
@@ -206,13 +202,12 @@ void remove_client_files(int fileDescriptor) {
     icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
 
     UNLOCK(&clientFilesMutex);
-
 }
 
 int contains_client_files(Node *fdList, char *path) {
 	for (; fdList != NULL; fdList = fdList->next) {
-		FileLock *fileLock = (FileLock *) fdList->value;        
-        if (strncmp(fileLock->path, path, STRING_SIZE) == 0) {
+		FileOpened *fileOpened = (FileOpened *) fdList->value;        
+        if (strncmp(fileOpened->path, path, STRING_SIZE) == 0) {
 			return 1;
 		}
 	}
@@ -231,9 +226,8 @@ void print_client_files() {
                 int *fd = curr->key;
                 printf("%d -> ", *fd);
                 for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
-                    // printf("%s ", (char *) temp->value);
-                    FileLock *fileLock = (FileLock *) temp->value;
-                    printf("[%s, %d] ", fileLock->path, *(fileLock->lock));
+                    FileOpened *fileOpened = (FileOpened *) temp->value;
+                    printf("[%s, %d] ", fileOpened->path, *(fileOpened->lock));
                 }
                 printf("\n");
             }
@@ -252,10 +246,10 @@ void destroy_storage() {
         for (curr = bucket; curr != NULL;) {
             if (curr->key) {
                 for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
-                    FileLock *fileLock = (FileLock *) temp->value;
-                    free(fileLock->path);
-                    free(fileLock->lock);
-                    free(fileLock);
+                    FileOpened *fileOpened = (FileOpened *) temp->value;
+                    free(fileOpened->path);
+                    free(fileOpened->lock);
+                    free(fileOpened);
                 }
             }
             curr = curr->next;
@@ -281,53 +275,3 @@ void destroy_storage() {
     icl_hash_destroy(clientFiles, free, NULL);
     destroy_cache();
 }
-
-// int
-// icl_hash_dump(FILE* stream, icl_hash_t* ht)
-// {
-//     icl_entry_t *bucket, *curr;
-//     int i;
-
-//     if(!ht) return -1;
-
-//     printf("==== Storage Table ====\n");
-
-//     for(i=0; i<ht->nbuckets; i++) {
-//         bucket = ht->buckets[i];
-//         for(curr=bucket; curr!=NULL; ) {
-//             if(curr->key)
-//                 fprintf(stream, "%p -> %p\n", curr->key, curr->data);
-//             curr=curr->next;
-//         }
-//     } 
-//     printf("\n");
-
-//     return 0;
-// }
-
-// if (fdList == NULL) {
-//     Node *newFdList = NULL;            
-
-//     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
-//     strcpy(filePath, newFile.filePath);
-
-//     add_head(&newFdList, filePath);
-
-//     icl_hash_insert(clientFiles, fd, newFdList);
-// } else {
-
-//     char *filePath = malloc(sizeof(char) * (strlen(newFile.filePath) + 1));
-//     strcpy(filePath, newFile.filePath);
-
-//     add_head(&fdList, filePath);
-
-//     // prova
-//     // icl_hash_delete(clientFiles, fd, free, free);
-//     // icl_hash_insert(clientFiles, fd, fdList);
-// }
-// int *fd = (int *) malloc(sizeof(int));
-// *fd = fileDescriptor;
-// add_head(&(newFile.fdList), fd);    
-
-// add_head(&(file->fdList), &fileDescriptor);        
-// file->fileSize = get_file_size(*file);

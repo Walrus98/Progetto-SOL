@@ -55,6 +55,8 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
                 case -1:
                     write(fileDescriptor, "Impossibile eseguire open multiple sullo stesso file!", 100);
                     break;
+                case -2:
+                    write(fileDescriptor, "Impossibile eseguire la open sul file richiesto perché è in stato di Locked", 100);
                 default:
                     break;
             }

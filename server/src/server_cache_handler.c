@@ -25,7 +25,7 @@ size_t get_file_size(File file) {
     switch (REPLACEMENT_POLICY) {
         case FIFO_POLICY:
             ;
-            int size = strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t) + sizeof(File); // + (size(file.fdList) * sizeof(int));
+            int size = strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t) + sizeof(File) + sizeof(int);
             UNLOCK(&cacheMutex);
             return size;
         default:
