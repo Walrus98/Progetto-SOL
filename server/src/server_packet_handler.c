@@ -26,13 +26,16 @@
 
 
 void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
+
+    int fileLength;
+    char *filePath;
+
     switch (packetID) {
 
         case OPEN_FILE:
-
             ;
-            int fileLength = *((int *) payload);
-            char *filePath = payload + 4;
+            fileLength = *((int *) payload);
+            filePath = payload + 4;
             int flagCreate = *((int *) (payload + 4 + fileLength));
             int flagLock = *((int *) (payload + 4 + fileLength + 4));
 
@@ -56,14 +59,37 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
                     write(fileDescriptor, "Impossibile eseguire open multiple sullo stesso file!", 100);
                     break;
                 case -2:
-                    write(fileDescriptor, "Impossibile eseguire la open sul file richiesto perché è in stato di Locked", 100);
+                    write(fileDescriptor, "Impossibile eseguire la open sul file richiesto perché è in stato di Locked", 100); 
+                    break;
+                case -3:
+                    write(fileDescriptor, "Impossibile eseguire la open sul file con il flag di Lock a 1 perché in questo momento è aperto da altri utenti", 100); 
+                    break;
                 default:
                     break;
             }
             break;
+
+         case READ_FILE:
+            ;
+            fileLength = *((int *) payload);
+            filePath = payload + 4;
+
+            int payloadLength = 0;
+            char *payloadResponse = readFile(fileDescriptor, filePath, &payloadLength);
+
+            int id = READ_FILE;
+            char *headerResponse = malloc(sizeof(int) * 2);
+            memcpy(headerResponse, &id, sizeof(int));
+            memcpy(headerResponse + sizeof(int), &payloadLength, sizeof(int));
+    
+            write(fileDescriptor, headerResponse, sizeof(int) * 2);
+            write(fileDescriptor, payloadResponse, payloadLength);
+
+            break;
+            
     }
 }
  
-void handleDisconnect(int fileDescriptor) {
-    remove_client_files(fileDescriptor);        
+void handleDisconnect(int fileDescriptor) {    
+    remove_client_files(fileDescriptor);      
 }

@@ -10,7 +10,8 @@ typedef struct File {
     char *filePath;
     char *fileContent;
     size_t fileSize;
-    int locked;
+    int *fileLocked;
+    int *fileOpens;
 } File;
 
 void inizialize_policy(int replacementPolicy);
@@ -22,6 +23,18 @@ void insert_file_cache(File file);
 File *replacement_file_cache();
 
 File *get_file_cache(char *filePath);
+
+int update_file_lock(File *file, int flagLock);
+
+int get_file_lock(File *file);
+
+void set_file_lock(File *file, int flagLock);
+
+void increase_file_opens(File *file);
+
+void decrease_file_opens(File *file);
+
+int get_files_opens(File *file);
 
 void print_cache();
 

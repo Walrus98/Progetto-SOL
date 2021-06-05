@@ -25,7 +25,7 @@ size_t get_file_size(File file) {
     switch (REPLACEMENT_POLICY) {
         case FIFO_POLICY:
             ;
-            int size = strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t) + sizeof(File) + sizeof(int);
+            int size = strlen(file.filePath) + strlen(file.fileContent) + 2 + sizeof(size_t) + sizeof(File) + (sizeof(int) * 2);
             UNLOCK(&cacheMutex);
             return size;
         default:
@@ -91,6 +91,83 @@ File *get_file_cache(char *filePath) {
     return NULL;
 }
 
+int get_file_lock(File *file) {
+    
+    LOCK(&cacheMutex);
+
+    int locked = *(file->fileLocked);
+    
+    UNLOCK(&cacheMutex);
+
+    return locked;
+}
+
+void set_file_lock(File *file, int flagLock) {
+
+    LOCK(&cacheMutex);
+
+    *(file->fileLocked) = flagLock;
+
+    UNLOCK(&cacheMutex);
+}
+
+void increase_file_opens(File *file) {
+
+    LOCK(&cacheMutex);
+
+    (*(file->fileOpens))++;
+
+    UNLOCK(&cacheMutex);
+}
+
+
+void decrease_file_opens(File *file) {
+
+    LOCK(&cacheMutex);
+
+    (*(file->fileOpens))--;
+
+    UNLOCK(&cacheMutex);
+}
+
+int get_files_opens(File *file) {
+
+    LOCK(&cacheMutex);
+
+    int opens = *(file->fileOpens);
+    
+    UNLOCK(&cacheMutex);
+
+    return opens;
+}
+
+
+// int update_file_lock(File *file, int flagLock) {
+
+//     LOCK(&cacheMutex);
+
+//     *(file->fileLocked) = flagLock
+
+//     UNLOCK(&cacheMutex);
+
+//     return 1;
+    
+    // LOCK(&cacheMutex);
+
+    // if (*(file->fileLocked) == 1) {
+
+    //     UNLOCK(&cacheMutex);
+    //     return -1;
+    // }
+
+    // *(file->fileLocked) = flagLock;
+
+    // printf("Valore aggiornato! %d\n", *(file->fileLocked));
+
+    // UNLOCK(&cacheMutex);
+
+    // return 1;
+// }
 
 void print_cache() {
     LOCK(&cacheMutex);

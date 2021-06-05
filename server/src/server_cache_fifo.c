@@ -19,7 +19,16 @@ void insert_fifo(Node **cache, File file) {
 	newFile->fileContent = fileContent;
 	
 	newFile->fileSize = file.fileSize;
-	newFile->locked = file.locked;
+
+	int *locked = malloc(sizeof(int));
+	*locked = *(file.fileLocked);
+
+	newFile->fileLocked = locked;
+
+	int *opens = malloc(sizeof(int));
+	*opens = *(file.fileOpens);
+
+	newFile->fileOpens = opens;
 
 	add_tail(cache, newFile);
 }
@@ -48,6 +57,8 @@ void print_fifo(Node *cache) {
 		printf("File Path %s\n", file->filePath);
 		printf("File Content %s\n", file->fileContent);
 		printf("File Size %ld\n", file->fileSize);
+		printf("File Lock %d\n", *(file->fileLocked));
+		printf("File Opens %d\n", *(file->fileOpens));
 		
 		printf("\n");
 	}
@@ -59,6 +70,8 @@ void destroy_fifo(Node **cache) {
 		File *file = (File *) temp->value;
 		free(file->filePath);
 		free(file->fileContent);
+		free(file->fileLocked);
+		free(file->fileOpens);
 		free(file);
 	}
 

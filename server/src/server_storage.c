@@ -36,6 +36,7 @@ int contains_client_files(Node *fdList, char *path);
 void print_client_files();
 
 int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
+void *readFile(int fileDescriptor, char *filePath, int *bufferSize);
 
 void create_storage(size_t fileCapacity, size_t storageCapacity, int replacementPolicy) {
     STORAGE_FILE_CAPACITY = fileCapacity;
@@ -58,9 +59,11 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
 
         File newFile;
         newFile.filePath = filePath;
-        newFile.fileContent = "";
-        newFile.fileSize = get_file_size(newFile); 
-        newFile.locked = flagLock;
+        newFile.fileContent = "Hello World!";
+        newFile.fileSize = get_file_size(newFile);
+        newFile.fileLocked = &flagLock;
+        int opens = 1;
+        newFile.fileOpens = &opens;
 
         insert_storage(newFile); 
 
@@ -68,16 +71,65 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
     }
 
     if (flagCreate == 0 && file != NULL) {
-        if (file->locked == 1) {
+
+        int locked = get_file_lock(file);
+
+        if (locked == 1) {
             return -2;
         }
-        if (flagLock == 1) {
-            file->locked = 1;
+
+        if (flagLock == 1 && get_files_opens(file) != 0) {
+            return -3;
         }
+
+        if (locked != flagLock) {
+            set_file_lock(file, flagLock);
+        }
+
+        increase_file_opens(file);
+
         return add_client_files(fileDescriptor, *file, flagLock);
     }
 
     return 0;
+}
+
+/*
+Legge tutto il contenuto del file dal server (se esiste) ritornando un puntatore ad un'area allocata sullo heap nel
+parametro ‘buf’, mentre ‘size’ conterrà la dimensione del buffer dati (ossia la dimensione in bytes del file letto). In
+caso di errore, ‘buf‘e ‘size’ non sono validi. Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene
+settato opportunamente.
+*/
+void *readFile(int fileDescriptor, char *filePath, int *bufferSize) {
+    
+    LOCK(&clientFilesMutex);
+
+    Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    File *file = NULL;
+
+    if (contains_client_files(fdList, filePath)) {
+
+        file = get_file_cache(filePath);
+
+        int contentLength = strlen(file->fileContent) + 1;
+        char *payload = malloc(contentLength);
+        memcpy(payload, file->fileContent, contentLength);
+
+        *bufferSize = contentLength;
+
+        // int contentLength = strlen(file->fileContent) + 1;
+        // int payloadSize = contentLength + sizeof(int);
+        // char *payload = malloc(payloadSize);
+
+        // memcpy(payload, &contentLength, sizeof(int));
+        // memcpy(payload + 4, file->fileContent, contentLength);
+        // *bufferSize = payloadSize;
+    }
+
+    return file;
+
+    // Se l'utente ha fatto la open
 }
 
 void insert_storage(File file) {
@@ -94,6 +146,12 @@ void insert_storage(File file) {
         File *fileToRemove = replacement_file_cache();
 
         fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", fileToRemove->filePath);
+
+        free(fileToRemove->filePath);
+        free(fileToRemove->fileContent);
+        free(fileToRemove->fileLocked);
+        free(fileToRemove->fileOpens);
+        free(fileToRemove);
     }
 
     // Se la dimensione corrente + quella del file che sto andando a caricare supera la capacità massima, allora applico la politica di rimpiazzamtno
@@ -103,6 +161,12 @@ void insert_storage(File file) {
         File *fileToRemove = replacement_file_cache();
 
         fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", fileToRemove->filePath);
+
+        free(fileToRemove->filePath);
+        free(fileToRemove->fileContent);
+        free(fileToRemove->fileLocked);
+        free(fileToRemove->fileOpens);
+        free(fileToRemove);
     }
 
     insert_file_cache(file);
@@ -170,8 +234,14 @@ int add_client_files(int fileDescriptor, File file, int flagLock) {
     // L'operazione è andata a buon fine
     UNLOCK(&clientFilesMutex);
 
+    print_storage();
+
+    printf("====================\n");
+
     print_client_files();
 
+    printf("\n");
+    
     return 1;
 }
 
@@ -186,6 +256,13 @@ void remove_client_files(int fileDescriptor) {
     // cancello il valore associato ai nodi
     for (Node *curr = fdList; curr != NULL; curr = curr->next) {
         FileOpened *fileOpened = (FileOpened *) curr->value;
+
+        File *file = get_file_cache(fileOpened->path);
+        if (*(fileOpened->lock) == 1) {
+            set_file_lock(file, 0);
+        }
+        decrease_file_opens(file);
+
         free(fileOpened->path);
         free(fileOpened->lock);
         free(fileOpened);
@@ -200,6 +277,14 @@ void remove_client_files(int fileDescriptor) {
 
     // cancello la chiavi
     icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
+    
+    print_storage();
+
+    printf("====================\n");
+
+    print_client_files();
+
+    printf("\n");
 
     UNLOCK(&clientFilesMutex);
 }
