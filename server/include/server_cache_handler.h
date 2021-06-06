@@ -9,7 +9,7 @@
 typedef struct File {
     char *filePath;
     char *fileContent;
-    size_t fileSize;
+    size_t *fileSize;
     int *fileLocked;
     int *fileOpens;
 } File;
@@ -20,11 +20,11 @@ size_t get_file_size(File file);
 
 void insert_file_cache(File file);
 
+void remove_file_cache(char *filePath);
+
 File *replacement_file_cache();
 
 File *get_file_cache(char *filePath);
-
-int update_file_lock(File *file, int flagLock);
 
 int get_file_lock(File *file);
 

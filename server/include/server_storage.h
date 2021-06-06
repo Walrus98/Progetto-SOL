@@ -3,9 +3,11 @@
 
 void create_storage(size_t fileCapacity, size_t storageCapacity, int storagePolicy);
 
-int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
+int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 
-void *readFile(int fileDescriptor, char *filePath, int *bufferSize);
+void *read_file(int fileDescriptor, char *filePath, int *bufferSize);
+
+void write_file(int fileDescriptor, char *filePath, char *fileContent);
 
 void remove_client_files();
 

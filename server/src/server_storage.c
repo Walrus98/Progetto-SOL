@@ -35,8 +35,9 @@ void remove_client_files(int fileDescriptor);
 int contains_client_files(Node *fdList, char *path);
 void print_client_files();
 
-int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
-void *readFile(int fileDescriptor, char *filePath, int *bufferSize);
+int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
+void *read_file(int fileDescriptor, char *filePath, int *bufferSize);
+void write_file(int fileDescriptor, char *filePath,  char *fileContent);
 
 void create_storage(size_t fileCapacity, size_t storageCapacity, int replacementPolicy) {
     STORAGE_FILE_CAPACITY = fileCapacity;
@@ -47,7 +48,7 @@ void create_storage(size_t fileCapacity, size_t storageCapacity, int replacement
     clientFiles = icl_hash_create(100, NULL, int_compare);
 }
 
-int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
+int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
 
     File *file = get_file_cache(filePath);
 
@@ -60,8 +61,12 @@ int openFile(int fileDescriptor, char *filePath, int flagCreate, int flagLock) {
         File newFile;
         newFile.filePath = filePath;
         newFile.fileContent = "Hello World!";
-        newFile.fileSize = get_file_size(newFile);
+        
+        size_t size = get_file_size(newFile);
+        newFile.fileSize = &size;
+
         newFile.fileLocked = &flagLock;
+
         int opens = 1;
         newFile.fileOpens = &opens;
 
@@ -100,42 +105,70 @@ parametro ‘buf’, mentre ‘size’ conterrà la dimensione del buffer dati (
 caso di errore, ‘buf‘e ‘size’ non sono validi. Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene
 settato opportunamente.
 */
-void *readFile(int fileDescriptor, char *filePath, int *bufferSize) {
+void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
     
     LOCK(&clientFilesMutex);
 
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
 
-    File *file = NULL;
+    char *payload = NULL;
 
+    // Se l'utente ha fatto la open sul file
     if (contains_client_files(fdList, filePath)) {
 
-        file = get_file_cache(filePath);
+        File *file = get_file_cache(filePath);
 
         int contentLength = strlen(file->fileContent) + 1;
-        char *payload = malloc(contentLength);
+        payload = malloc(contentLength);
         memcpy(payload, file->fileContent, contentLength);
 
         *bufferSize = contentLength;
+    }
+    
+    UNLOCK(&clientFilesMutex);
 
-        // int contentLength = strlen(file->fileContent) + 1;
-        // int payloadSize = contentLength + sizeof(int);
-        // char *payload = malloc(payloadSize);
+    return payload;
 
-        // memcpy(payload, &contentLength, sizeof(int));
-        // memcpy(payload + 4, file->fileContent, contentLength);
-        // *bufferSize = payloadSize;
+}
+
+void write_file(int fileDescriptor, char *filePath, char *fileContent) {
+    
+    LOCK(&clientFilesMutex);
+
+    Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    // Se l'utente ha fatto la open sul file
+    if (contains_client_files(fdList, filePath)) {
+        File *file = get_file_cache(filePath);
+
+        File tempFile;
+        tempFile.filePath = file->filePath;
+        tempFile.fileContent = fileContent;
+        tempFile.fileLocked = file->fileLocked;
+        tempFile.fileOpens = file->fileOpens;
+        size_t size = get_file_size(tempFile);
+        tempFile.fileSize = &size;
+
+        insert_storage(tempFile);     
     }
 
-    return file;
-
-    // Se l'utente ha fatto la open
+    UNLOCK(&clientFilesMutex);
 }
 
 void insert_storage(File file) {
 
+    // Controllo se il file che sto inserendo è già presente nello storage
+    File *tempFile = get_file_cache(file.filePath);
+    // Se è presente, significa che devo aggiornare il contenuto del file
+    if (tempFile != NULL) {       
+        remove_file_cache(tempFile->filePath);
+
+        CURRENT_FILE_AMOUNT--;
+        CURRENT_STORAGE_SIZE -= *(file.fileSize);
+    }
+
     // Se il file da inserire supera la capacità massima dello storage, annullo l'inserimento
-    if (file.fileSize > STORAGE_CAPACITY) {
+    if (*(file.fileSize) > STORAGE_CAPACITY) {
         fprintf(stderr, "ERRORE: il file non è stato inserito in quanto supera la capacità massima dello Storage.\n");
         return;
     }
@@ -149,13 +182,14 @@ void insert_storage(File file) {
 
         free(fileToRemove->filePath);
         free(fileToRemove->fileContent);
+		free(fileToRemove->fileSize);
         free(fileToRemove->fileLocked);
         free(fileToRemove->fileOpens);
         free(fileToRemove);
     }
 
     // Se la dimensione corrente + quella del file che sto andando a caricare supera la capacità massima, allora applico la politica di rimpiazzamtno
-    while (CURRENT_STORAGE_SIZE + file.fileSize > STORAGE_CAPACITY) {
+    while (CURRENT_STORAGE_SIZE + *(file.fileSize) > STORAGE_CAPACITY) {
         fprintf(stderr, "ATTENZIONE: raggiunta la dimensione massima dello Storage.\n");
         
         File *fileToRemove = replacement_file_cache();
@@ -164,15 +198,26 @@ void insert_storage(File file) {
 
         free(fileToRemove->filePath);
         free(fileToRemove->fileContent);
+		free(fileToRemove->fileSize);
         free(fileToRemove->fileLocked);
         free(fileToRemove->fileOpens);
         free(fileToRemove);
     }
 
+
     insert_file_cache(file);
 
+    if (tempFile != NULL) {
+        free(tempFile->filePath);
+        free(tempFile->fileContent);
+        free(tempFile->fileSize);
+        free(tempFile->fileLocked);
+        free(tempFile->fileOpens);
+        free(tempFile);
+    }
+
     CURRENT_FILE_AMOUNT++;
-    CURRENT_STORAGE_SIZE += file.fileSize;
+    CURRENT_STORAGE_SIZE += *(file.fileSize);
 }
 
 void print_storage() {
@@ -347,9 +392,9 @@ void destroy_storage() {
         for (curr = bucket; curr != NULL;) {
             if (curr->key) {
                 for (Node *temp = curr->data; temp != NULL; temp = temp->next) {
-                    Node *test = curr->data;
+                    Node *freeNode = curr->data;
                     curr = curr->next;
-                    free(test);
+                    free(freeNode);
                 }
             }
             curr = curr->next;

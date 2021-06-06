@@ -5,6 +5,8 @@
 
 void insert_fifo(Node **cache, File file);
 
+void remove_fifo(Node **cache, char *filePath);
+
 File *pop_fifo(Node **cache);
 
 File *get_file_fifo(Node *cache, char *filePath);

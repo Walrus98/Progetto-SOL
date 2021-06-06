@@ -46,7 +46,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             // printf("Flag Create -> %d\n", flagCreate);
             // printf("Flag Lock -> %d\n", flagLock);
 
-            int response = openFile(fileDescriptor, filePath, flagCreate, flagLock);
+            int response = open_file(fileDescriptor, filePath, flagCreate, flagLock);
 
             switch (response) {
                 case 1:
@@ -75,7 +75,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             filePath = payload + 4;
 
             int payloadLength = 0;
-            char *payloadResponse = readFile(fileDescriptor, filePath, &payloadLength);
+            char *payloadResponse = read_file(fileDescriptor, filePath, &payloadLength);
 
             int id = READ_FILE;
             char *headerResponse = malloc(sizeof(int) * 2);
@@ -85,8 +85,26 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             write(fileDescriptor, headerResponse, sizeof(int) * 2);
             write(fileDescriptor, payloadResponse, payloadLength);
 
-            break;
+            free(headerResponse);
+            free(payloadResponse);
             
+            break;
+
+        case WRITE_FILE:
+            ;
+            fileLength = *((int *) payload);
+            filePath = payload + 4;
+
+            char fileContent[7] = "BAUBAB";
+
+            write_file(fileDescriptor, filePath, fileContent);
+
+            write(fileDescriptor, "OK!", 100); 
+
+            break;
+
+        default:
+            break;       
     }
 }
  

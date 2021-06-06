@@ -56,6 +56,22 @@ void insert_file_cache(File file) {
     UNLOCK(&cacheMutex);
 }
 
+void remove_file_cache(char *filePath) {    
+    
+    LOCK(&cacheMutex);
+
+    switch (REPLACEMENT_POLICY) {
+        case FIFO_POLICY:
+            ;
+            remove_fifo(&cacheFIFO, filePath);
+            break;
+        default:
+            break;
+    }
+    
+    UNLOCK(&cacheMutex);
+}
+
 File *replacement_file_cache() {
     
     LOCK(&cacheMutex);
@@ -90,6 +106,7 @@ File *get_file_cache(char *filePath) {
 
     return NULL;
 }
+
 
 int get_file_lock(File *file) {
     
@@ -140,6 +157,7 @@ int get_files_opens(File *file) {
 
     return opens;
 }
+
 
 
 // int update_file_lock(File *file, int flagLock) {
