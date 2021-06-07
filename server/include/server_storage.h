@@ -7,9 +7,11 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 
 void *read_file(int fileDescriptor, char *filePath, int *bufferSize);
 
-void write_file(int fileDescriptor, char *filePath, char *fileContent);
+int write_file(int fileDescriptor, char *filePath, char *fileContent);
 
-void close_file(int fileDescriptor, char *filePath);
+int close_file(int fileDescriptor, char *filePath);
+
+int remove_file(int fileDescriptor, char *filePath);
 
 void disconnect_client(int fileDescriptor);
 

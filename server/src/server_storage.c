@@ -39,8 +39,8 @@ void print_client_files();
 // Metodi per gestire le richieste inviate dai client
 int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 void *read_file(int fileDescriptor, char *filePath, int *bufferSize);
-void write_file(int fileDescriptor, char *filePath,  char *fileContent);
-void close_file(int fileDescriptor, char *filePath);
+int write_file(int fileDescriptor, char *filePath,  char *fileContent);
+int close_file(int fileDescriptor, char *filePath);
 
 // ========================= METODI DELLO STORAGE =========================
 
@@ -220,7 +220,37 @@ int add_client_files(int fileDescriptor, char *filePath, int flagLock) {
     // L'operazione è andata a buon fine
     UNLOCK(&clientFilesMutex);
     
+    print_storage();
+    
     return 1;
+}
+
+void remove_client_files(Node **fdList, char *filePath) {
+
+    // Rimuovo il nodo dalla lista della mappa
+    if (*fdList != NULL) {
+		Node *currentFdList = *fdList;
+		Node *precFdList = NULL;
+
+		while (currentFdList != NULL) {
+            FileOpened *fileOpened = (FileOpened *) currentFdList->value;
+			if (strncmp(fileOpened->path, filePath, STRING_SIZE) == 0) {
+				if (precFdList == NULL) {
+					Node *tempNode = *fdList;
+                    *fdList = (*fdList)->next;
+					free(tempNode);  
+					return;
+				} else {
+					Node *tempNode = *fdList;
+					precFdList->next = currentFdList->next;
+					free(tempNode);
+					return;
+				}
+			}
+			precFdList = currentFdList;
+			currentFdList = currentFdList->next;
+		}
+	}
 }
 
 FileOpened *get_client_files(Node *fdList, char *path) {
@@ -235,6 +265,8 @@ FileOpened *get_client_files(Node *fdList, char *path) {
 
 void print_client_files() {
     icl_entry_t *bucket, *curr;
+
+    printf("==== Client Files Map ====\n");
     
     for (int i = 0; i < clientFiles->nbuckets; i++) {
         bucket = clientFiles->buckets[i];
@@ -251,6 +283,8 @@ void print_client_files() {
             curr = curr->next;
         }
     }
+
+    printf("\n");
 }
 
 // ========================= METODI CHE GESTISOCNO LE RICHIESTE DEI CLIENT =========================
@@ -267,7 +301,7 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
 
         File newFile;
         newFile.filePath = filePath;
-        newFile.fileContent = "";
+        newFile.fileContent = "Hello World!";
         
         size_t size = get_file_size(newFile);
         newFile.fileSize = &size;
@@ -327,16 +361,19 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
     }
     
     UNLOCK(&clientFilesMutex);
-
+    
+    print_storage();
+    
     return payload;
-
 }
 
-void write_file(int fileDescriptor, char *filePath, char *fileContent) {
+int write_file(int fileDescriptor, char *filePath, char *fileContent) {
     
     LOCK(&clientFilesMutex);
 
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    int response = 0;
 
     // Se l'utente ha fatto la open sul file
     if (get_client_files(fdList, filePath) != NULL) {
@@ -350,69 +387,74 @@ void write_file(int fileDescriptor, char *filePath, char *fileContent) {
         size_t size = get_file_size(tempFile);
         tempFile.fileSize = &size;
 
-        insert_storage(tempFile);     
+        insert_storage(tempFile); 
+
+        response = 1;    
     }
+    
+    print_storage();
 
     UNLOCK(&clientFilesMutex);
+
+    return response;
 }
 
-void remove_file(int fileDescriptor, char *filePath) {
-    
+int remove_file(int fileDescriptor, char *filePath) {
+
     LOCK(&clientFilesMutex);
 
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    int response = 0;
 
     for (Node *curr = fdList; curr != NULL; curr = curr->next) {
         FileOpened *fileOpened = (FileOpened *) curr->value;
         if (strncmp(fileOpened->path, filePath, STRING_SIZE) == 0) {
-            File *file = get_file_cache(fileOpened->path);
-           
-            remove_file_cache(file->filePath);
+            if (*(fileOpened->lock) == 1) {
 
-            free(fileOpened->path);
-            free(fileOpened->lock);
-            free(fileOpened);
+                File *file = get_file_cache(fileOpened->path);
+
+                remove_file_cache(file->filePath);
+                free(file->filePath);
+                free(file->fileContent);
+                free(file->fileSize);
+                free(file->fileLocked);
+                free(file->fileOpens);
+                free(file);
+
+                remove_client_files(&fdList, fileOpened->path);
+                free(fileOpened->path);
+                free(fileOpened->lock);
+                free(fileOpened);
+                
+                response = 1;                
+            } else {
+                response = -1;
+            }
             break;
         }
     }
 
-    // Rimuovo il nodo dalla lista
-    if (fdList != NULL) {
-		Node *currentFdList = fdList;
-		Node *precFdList = NULL;
-
-		while (currentFdList != NULL) {
-            FileOpened *fileOpened = (FileOpened *) currentFdList->value;
-			if (strncmp(fileOpened->path, filePath, STRING_SIZE) == 0) {
-				if (precFdList == NULL) {
-					Node *tempNode = fdList;
-					fdList = fdList->next;
-					free(tempNode);
-                    
-                    UNLOCK(&clientFilesMutex);    
-					return;
-				} else {
-					Node *tempNode = fdList;
-					precFdList->next = currentFdList->next;
-					free(tempNode);
-                    
-                    UNLOCK(&clientFilesMutex);    
-					return;
-				}
-			}
-			precFdList = currentFdList;
-			currentFdList = currentFdList->next;
-		}
-	}
-
+    // Se la lista della mappa è uguale a null, significa che l'utente ha fatto la close sull'ultimo file che aveva aperto, quindi devo
+    // cancellare la chiave dalla mappa e quando andrà ad eseguire una nuova open, riallocherò un nuovo fd. Altrimenti la insert alloca 4byte di memoria in più
+    if (fdList == NULL) {
+        icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
+    }
+    
+    print_storage();
+    
     UNLOCK(&clientFilesMutex);    
+
+    return response;
 }
 
-void close_file(int fileDescriptor, char *filePath) {
+int close_file(int fileDescriptor, char *filePath) {
     
     LOCK(&clientFilesMutex);
 
     Node *fdList = (Node *) icl_hash_find(clientFiles, &fileDescriptor);
+
+    int response = 0;
 
     for (Node *curr = fdList; curr != NULL; curr = curr->next) {
         FileOpened *fileOpened = (FileOpened *) curr->value;
@@ -421,45 +463,32 @@ void close_file(int fileDescriptor, char *filePath) {
             if (*(fileOpened->lock) == 1) {
                 set_file_lock(file, 0);
             }
-            decrease_file_opens(file);
+            decrease_file_opens(file);            
 
+            remove_client_files(&fdList, fileOpened->path);
             free(fileOpened->path);
             free(fileOpened->lock);
             free(fileOpened);
+
+            response = 1;
+
             break;
         }
     }
 
-    // Rimuovo il nodo dalla lista
-    if (fdList != NULL) {
-		Node *currentFdList = fdList;
-		Node *precFdList = NULL;
+    // Se la lista della mappa è uguale a null, significa che l'utente ha fatto la close sull'ultimo file che aveva aperto, quindi devo
+    // cancellare la chiave dalla mappa e quando andrà ad eseguire una nuova open, riallocherò un nuovo fd. Altrimenti la insert alloca 4byte di memoria in più
+    if (fdList == NULL) {
 
-		while (currentFdList != NULL) {
-             FileOpened *fileOpened = (FileOpened *) currentFdList->value;
-			if (strncmp(fileOpened->path, filePath, STRING_SIZE) == 0) {
-				if (precFdList == NULL) {
-					Node *tempNode = fdList;
-					fdList = fdList->next;
-					free(tempNode);
-                    
-                    UNLOCK(&clientFilesMutex);    
-					return;
-				} else {
-					Node *tempNode = fdList;
-					precFdList->next = currentFdList->next;
-					free(tempNode);
-                    
-                    UNLOCK(&clientFilesMutex);    
-					return;
-				}
-			}
-			precFdList = currentFdList;
-			currentFdList = currentFdList->next;
-		}
-	}
+        
+        icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
+    }
+    
+    print_storage();
     
     UNLOCK(&clientFilesMutex);    
+
+    return response;
 }
 
 // Gestisco la disconnessione di un client
@@ -495,4 +524,6 @@ void disconnect_client(int fileDescriptor) {
     icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
     
     UNLOCK(&clientFilesMutex);
+    
+    print_storage();
 }

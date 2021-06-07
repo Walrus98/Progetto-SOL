@@ -29,15 +29,18 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
     int fileLength;
     char *filePath;
+    int response;
+    int flagCreate;
+    int flagLock;
 
     switch (packetID) {
 
         case OPEN_FILE:
             ;
             fileLength = *((int *) payload);
-            filePath = payload + 4;
-            int flagCreate = *((int *) (payload + 4 + fileLength));
-            int flagLock = *((int *) (payload + 4 + fileLength + 4));
+            filePath = payload + sizeof(int);
+            flagCreate = *((int *) (payload + sizeof(int) + fileLength));
+            flagLock = *((int *) (payload + sizeof(int) + fileLength + sizeof(int)));
 
             // printf("Header ID -> %d\n", packetID);
             // printf("Header Size -> %d\n", packetSize);
@@ -46,7 +49,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             // printf("Flag Create -> %d\n", flagCreate);
             // printf("Flag Lock -> %d\n", flagLock);
 
-            int response = open_file(fileDescriptor, filePath, flagCreate, flagLock);
+            response = open_file(fileDescriptor, filePath, flagCreate, flagLock);
 
             switch (response) {
                 case 1:
@@ -69,25 +72,30 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             }
             break;
 
-         case READ_FILE:
+        case READ_FILE:
             ;
             fileLength = *((int *) payload);
             filePath = payload + 4;
 
-            int payloadLength = 0;
-            char *payloadResponse = read_file(fileDescriptor, filePath, &payloadLength);
+            int contentLength = 0;
+            char *content = read_file(fileDescriptor, filePath, &contentLength);
 
-            int id = READ_FILE;
-            char *headerResponse = malloc(sizeof(int) * 2);
-            memcpy(headerResponse, &id, sizeof(int));
-            memcpy(headerResponse + sizeof(int), &payloadLength, sizeof(int));
-    
-            write(fileDescriptor, headerResponse, sizeof(int) * 2);
-            write(fileDescriptor, payloadResponse, payloadLength);
+            // Se l'utente non ha eseguito la open sul file
+            if (content == NULL) {
+                content = (char *) malloc(sizeof(char) * 100);
+                strncpy(content, "Devi prima eseguire la open su quel file!", 100);
+                contentLength = 100;
+            }
+            char *buffer = malloc(sizeof(int) + contentLength);
 
-            free(headerResponse);
-            free(payloadResponse);
-            
+            memcpy(buffer, &contentLength, sizeof(int));
+            memcpy(buffer + sizeof(int), content, contentLength);
+
+            write(fileDescriptor, buffer, (sizeof(int) + contentLength));
+
+            free(content);
+            free(buffer);
+
             break;
 
         case READ_N_FILES:
@@ -100,9 +108,13 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             char fileContent[7] = "BAUBAB";
 
-            write_file(fileDescriptor, filePath, fileContent);
+            response = write_file(fileDescriptor, filePath, fileContent);
 
-            write(fileDescriptor, "OK!", 100); 
+            if (response == 1) {
+                write(fileDescriptor, "Write eseguita con successo!", 100); 
+            } else {
+                write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100); 
+            }
 
             break;
 
@@ -115,12 +127,36 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             fileLength = *((int *) payload);
             filePath = payload + 4;
 
-            close_file(fileDescriptor, filePath);
+            response = close_file(fileDescriptor, filePath);
 
+            if (response == 1) {
+                write(fileDescriptor, "Close eseguita con successo!", 100); 
+            } else {
+                write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100); 
+            }
+            
             break;
         
         case REMOVE_FILE:
+            ;
+            fileLength = *((int *) payload);
+            filePath = payload + 4;
 
+            response = remove_file(fileDescriptor, filePath);
+            
+            switch (response) {
+                case 1:
+                    write(fileDescriptor, "Remove eseguita con successo!", 100);
+                    break;
+                case 0:
+                    write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100);
+                    break;
+                case -1:
+                    write(fileDescriptor, "Per rimuovere il file devi prima settare il flag di Lock a 1!", 100);
+                    break;
+                default:
+                    break;
+            }
             break;
 
         default:
