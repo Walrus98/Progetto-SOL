@@ -20,20 +20,6 @@ int main(void) {
     // Stabilisco la connessione con i client
     create_connection(THREAD_WORKERS_AMOUNT);
 
-    // insert_storage("ciao.txt", "messaggiodiprova");
-    // insert_storage("123213.txt", "cambiato");
-    // insert_storage("prova.txt", "dddd");
-
-    // Stabilisco la connessione
-    // establish_connection();
-
-
-    // insert_storage("ciao.txt", "messaggiodiprova");
-    // insert_storage("123213.txt", "cambiato");
-    // insert_storage("prova.txt", "dddd");
-    
-    // print_storage();
-
     destroy_storage();
       
     return EXIT_SUCCESS;

@@ -84,7 +84,8 @@ void remove_fifo(Node **cache, char *filePath) {
 		Node *precNode = NULL;
 
 		while (currentCache != NULL) {
-			if (strncmp((char *) currentCache->value, filePath, STRING_SIZE) == 0) {
+			File *file = (File *) currentCache->value;
+			if (strncmp(file->filePath, filePath, STRING_SIZE) == 0) {
 				if (precNode == NULL) {
 					Node *tempNode = *cache;
 					*cache = (*cache)->next;

@@ -13,7 +13,7 @@ typedef Node *List;
 void add_tail(Node **list, void *value);
 void add_head(Node **list, void *value);
 void *remove_head(Node **list);
-void remove_value(Node **cache, char *filePath);
+// void remove_value(Node **cache, char *filePath);
 int contains(Node *list, void *value);
 
 int size(Node *list);

@@ -9,7 +9,9 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize);
 
 void write_file(int fileDescriptor, char *filePath, char *fileContent);
 
-void remove_client_files();
+void close_file(int fileDescriptor, char *filePath);
+
+void disconnect_client(int fileDescriptor);
 
 void destroy_storage();
 

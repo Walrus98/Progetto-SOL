@@ -90,6 +90,9 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             
             break;
 
+        case READ_N_FILES:
+            break;
+
         case WRITE_FILE:
             ;
             fileLength = *((int *) payload);
@@ -103,11 +106,29 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             break;
 
+        case APPEND_TO_FILE:
+
+            break;
+
+        case CLOSE_FILE:            
+            ;
+            fileLength = *((int *) payload);
+            filePath = payload + 4;
+
+            close_file(fileDescriptor, filePath);
+
+            break;
+        
+        case REMOVE_FILE:
+
+            break;
+
         default:
             break;       
     }
+
 }
  
 void handleDisconnect(int fileDescriptor) {    
-    remove_client_files(fileDescriptor);      
+    disconnect_client(fileDescriptor);      
 }

@@ -48,30 +48,30 @@ void *remove_head(Node **list) {
 	return value;
 }
 
-void remove_value(Node **cache, char *filePath) {
-	if (*cache != NULL) {
-		Node *currentCache = *cache;
-		Node *precNode = NULL;
+// void remove_value(Node **cache, char *filePath) {
+// 	if (*cache != NULL) {
+// 		Node *currentCache = *cache;
+// 		Node *precNode = NULL;
 
-		while (currentCache != NULL) {
-			if (strncmp((char *) currentCache->value, filePath, STRING_SIZE) == 0) {
-				if (precNode == NULL) {
-					Node *tempNode = *cache;
-					*cache = (*cache)->next;
-					free(tempNode);
-					return;
-				} else {
-					Node *tempNode = *cache;
-					precNode->next = currentCache->next;
-					free(tempNode);
-					return;
-				}
-			}
-			precNode = currentCache;
-			currentCache = currentCache->next;
-		}
-	}
-}
+// 		while (currentCache != NULL) {
+// 			if (strncmp((char *) currentCache->value, filePath, STRING_SIZE) == 0) {
+// 				if (precNode == NULL) {
+// 					Node *tempNode = *cache;
+// 					*cache = (*cache)->next;
+// 					free(tempNode);
+// 					return;
+// 				} else {
+// 					Node *tempNode = *cache;
+// 					precNode->next = currentCache->next;
+// 					free(tempNode);
+// 					return;
+// 				}
+// 			}
+// 			precNode = currentCache;
+// 			currentCache = currentCache->next;
+// 		}
+// 	}
+// }
 
 int contains(Node *list, void *value) {
 	for (; list != NULL; list = list->next) {
