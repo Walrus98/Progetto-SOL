@@ -158,7 +158,7 @@ int get_files_opens(File *file) {
     return opens;
 }
 
-char* get_n_files_cache(int nFiles) {
+char* get_n_files_cache(int nFiles, int *bufferSize) {
     
     LOCK(&cacheMutex);
 
@@ -166,7 +166,7 @@ char* get_n_files_cache(int nFiles) {
 
     switch (REPLACEMENT_POLICY) {
         case FIFO_POLICY:
-            buffer = get_n_files_fifo(cacheFIFO, nFiles);
+            buffer = get_n_files_fifo(cacheFIFO, nFiles, bufferSize);
             UNLOCK(&cacheMutex);
             return buffer;
         default:

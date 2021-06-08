@@ -7,6 +7,8 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 
 void *read_file(int fileDescriptor, char *filePath, int *bufferSize);
 
+char *read_n_file(int nFiles, int *bufferSize);
+
 int write_file(int fileDescriptor, char *filePath, char *fileContent);
 
 int close_file(int fileDescriptor, char *filePath);

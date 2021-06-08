@@ -22,8 +22,6 @@ void create_connection(size_t poolSize) {
     // Variabile globale per gestire la condizione di terminazione dei thread
     CONNECTION = 1;
 
-    // STOP = 0;
-
     // Creo la maschera utilazzata per la gestione dei segnali
     sigset_t blockMask;
     sigemptyset(&blockMask);

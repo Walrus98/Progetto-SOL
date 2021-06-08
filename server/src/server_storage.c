@@ -40,6 +40,7 @@ void print_client_files();
 // Metodi per gestire le richieste inviate dai client
 int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock);
 void *read_file(int fileDescriptor, char *filePath, int *bufferSize);
+char *read_n_file(int nFiles, int *bufferSize);
 int write_file(int fileDescriptor, char *filePath,  char *fileContent);
 int close_file(int fileDescriptor, char *filePath);
 
@@ -81,27 +82,11 @@ void insert_storage(File file) {
         CURRENT_FILE_AMOUNT--;
 
         fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", fileToRemove->filePath);
-                
-        LOCK(&clientFilesMutex);
-
-        icl_entry_t *bucket, *curr;
-        // Itero tutta la mappa e cancello il fileOpen
-        for (int i = 0; i < clientFiles->nbuckets; i++) {
-            bucket = clientFiles->buckets[i];
-            for (curr = bucket; curr != NULL;) {
-                if (curr->key) {
-                    Node* fdList = curr->data;
-                    remove_client_files(&fdList, fileToRemove->filePath);
-                }
-                curr = curr->next;
-            }
-        }     
-
-        UNLOCK(&clientFilesMutex);  
-
+        
+    
         free(fileToRemove->filePath);
         free(fileToRemove->fileContent);
-		free(fileToRemove->fileSize);
+        free(fileToRemove->fileSize);
         free(fileToRemove->fileLocked);
         free(fileToRemove->fileOpens);
         free(fileToRemove);
@@ -117,23 +102,6 @@ void insert_storage(File file) {
         CURRENT_FILE_AMOUNT--;
 
         fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", fileToRemove->filePath);
-
-        LOCK(&clientFilesMutex);
-
-        icl_entry_t *bucket, *curr;
-        // Itero tutta la mappa e cancello il fileOpened che ha il nome del file rimosso
-        for (int i = 0; i < clientFiles->nbuckets; i++) {
-            bucket = clientFiles->buckets[i];
-            for (curr = bucket; curr != NULL;) {
-                if (curr->key) {
-                    Node* fdList = curr->data;
-                    remove_client_files(&fdList, fileToRemove->filePath);
-                }
-                curr = curr->next;
-            }
-        }     
-
-        UNLOCK(&clientFilesMutex); 
 
         free(fileToRemove->filePath);
         free(fileToRemove->fileContent);
@@ -207,7 +175,6 @@ void destroy_storage() {
 
     destroy_cache();
 }
-
 
 // ========================= METODI DELLA MAPPA =========================
 
@@ -311,8 +278,6 @@ FileOpened *get_client_files(Node *fdList, char *path) {
 
 void print_client_files() {
     
-    LOCK(&clientFilesMutex); 
-
     icl_entry_t *bucket, *curr;
 
     printf("==== Client Files Map ====\n");
@@ -335,7 +300,6 @@ void print_client_files() {
 
     printf("\n");
     
-    UNLOCK(&clientFilesMutex);   
 }
 
 // ========================= METODI CHE GESTISOCNO LE RICHIESTE DEI CLIENT =========================
@@ -399,16 +363,21 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
 
     char *payload = NULL;
 
+    FileOpened *fileOpened = NULL;
+
     // Se l'utente ha fatto la open sul file
-    if (get_client_files(fdList, filePath) != NULL) {
+    if ((fileOpened = get_client_files(fdList, filePath)) != NULL) {
 
         File *file = get_file_cache(filePath);
 
-        int contentLength = strlen(file->fileContent) + 1;
-        payload = malloc(contentLength);
-        memcpy(payload, file->fileContent, contentLength);
+        // Se file è uguale a NULL, significa che l'utente ha eseguto correttamente la open, ma il file è stato cancellato dalla politica di rimpiazzamento
+        // if (file != NULL) {
+            int contentLength = strlen(file->fileContent) + 1;
+            payload = malloc(contentLength);
+            memcpy(payload, file->fileContent, contentLength);
 
-        *bufferSize = contentLength;
+            *bufferSize = contentLength;
+        // } 
     }
     
     UNLOCK(&clientFilesMutex);
@@ -418,13 +387,13 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
     return payload;
 }
 
-void *read_n_file(int nFiles, int *bufferSize) {
+char *read_n_file(int nFiles, int *bufferSize) {
 
     if (nFiles <= 0 || nFiles > CURRENT_FILE_AMOUNT) {
-        return get_n_files_cache(CURRENT_FILE_AMOUNT);
+        return get_n_files_cache(CURRENT_FILE_AMOUNT, bufferSize);
     }
     
-    return get_n_files_cache(nFiles);
+    return get_n_files_cache(nFiles, bufferSize);
 }
 
 int write_file(int fileDescriptor, char *filePath, char *fileContent) {
@@ -474,6 +443,9 @@ int remove_file(int fileDescriptor, char *filePath) {
 
                 File *file = get_file_cache(fileOpened->path);
 
+                CURRENT_STORAGE_SIZE -= *(file->fileSize);
+                CURRENT_FILE_AMOUNT--;
+
                 remove_file_cache(file->filePath);
                 free(file->filePath);
                 free(file->fileContent);
@@ -520,10 +492,11 @@ int close_file(int fileDescriptor, char *filePath) {
         FileOpened *fileOpened = (FileOpened *) curr->value;
         if (strncmp(fileOpened->path, filePath, STRING_SIZE) == 0) {
             File *file = get_file_cache(fileOpened->path);
+
             if (*(fileOpened->lock) == 1) {
                 set_file_lock(file, 0);
             }
-            decrease_file_opens(file);            
+            decrease_file_opens(file);         
 
             remove_client_files(&fdList, fileOpened->path);
             free(fileOpened->path);
@@ -538,9 +511,7 @@ int close_file(int fileDescriptor, char *filePath) {
 
     // Se la lista della mappa è uguale a null, significa che l'utente ha fatto la close sull'ultimo file che aveva aperto, quindi devo
     // cancellare la chiave dalla mappa e quando andrà ad eseguire una nuova open, riallocherò un nuovo fd. Altrimenti la insert alloca 4byte di memoria in più
-    if (fdList == NULL) {
-
-        
+    if (fdList == NULL) {        
         icl_hash_delete(clientFiles, &fileDescriptor, free, NULL);
     }
     
@@ -563,6 +534,7 @@ void disconnect_client(int fileDescriptor) {
         FileOpened *fileOpened = (FileOpened *) curr->value;
 
         File *file = get_file_cache(fileOpened->path);
+
         if (*(fileOpened->lock) == 1) {
             set_file_lock(file, 0);
         }

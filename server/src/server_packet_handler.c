@@ -98,6 +98,18 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             break;
 
         case READ_N_FILES:
+            ;
+
+            int n = 2;
+            int bufferSize = 0;
+
+            char *test = read_n_file(n, &bufferSize);
+
+            write(fileDescriptor, &bufferSize, sizeof(int));
+            write(fileDescriptor, test, bufferSize);
+
+            free(test);
+
             break;
 
         case WRITE_FILE:

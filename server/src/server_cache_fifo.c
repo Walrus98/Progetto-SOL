@@ -47,17 +47,43 @@ File *get_file_fifo(Node *cache, char *filePath) {
 	return NULL;
 }
 
-char *get_n_files_fifo(Node *cache, int nFiles) {
+char *get_n_files_fifo(Node *cache, int nFiles, int *bufferSize) {
 
-	char *buffer = malloc(sizeof(int) + (sizeof(File) * nFiles));
+	// int diocane = 5;
 
-	if (buffer != NULL) {
-		memcpy(buffer, &nFiles, sizeof(sizeof(int)));
-		for (int i = 0; cache != NULL && i < nFiles; cache = cache->next) {
-			File *file = (File *) cache->value;
-			memcpy(buffer + sizeof(int) + sizeof(File) * i, file, sizeof(File));
-			i++;
-		}
+	// char *asd = malloc(sizeof(int));
+	// memcpy(asd, &diocane, sizeof(int));
+ 	// int packetSize = *((int *) asd);
+	// printf("%d\n", packetSize);
+
+	Node *tempCache = cache;
+	for (int i = 0; tempCache != NULL && i < nFiles; tempCache = tempCache->next) {
+		File *file = (File *) tempCache->value;
+
+		int pathLength = strlen(file->filePath) + 1; 
+		int contentLength = strlen(file->fileContent) + 1;
+
+		*bufferSize += pathLength + contentLength + sizeof(int) * 2;		
+	}
+
+	char *buffer = (char *) malloc(*bufferSize);
+
+	char *currentPosition = buffer;
+
+	for (int i = 0; cache != NULL && i < nFiles; cache = cache->next) {
+		File *file = (File *) cache->value;
+
+		int pathLength = strlen(file->filePath) + 1; 
+		int contentLength = strlen(file->fileContent) + 1;
+
+		memcpy(currentPosition, &pathLength, sizeof(int));
+		currentPosition += sizeof(int);
+		memcpy(currentPosition, file->filePath, pathLength);
+		currentPosition += pathLength;
+		memcpy(currentPosition, &contentLength, sizeof(int));
+		currentPosition += sizeof(int);
+		memcpy(currentPosition, file->fileContent, contentLength);
+		currentPosition += contentLength;
 	}
 
 	return buffer;
