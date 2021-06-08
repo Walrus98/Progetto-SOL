@@ -47,6 +47,22 @@ File *get_file_fifo(Node *cache, char *filePath) {
 	return NULL;
 }
 
+char *get_n_files_fifo(Node *cache, int nFiles) {
+
+	char *buffer = malloc(sizeof(int) + (sizeof(File) * nFiles));
+
+	if (buffer != NULL) {
+		memcpy(buffer, &nFiles, sizeof(sizeof(int)));
+		for (int i = 0; cache != NULL && i < nFiles; cache = cache->next) {
+			File *file = (File *) cache->value;
+			memcpy(buffer + sizeof(int) + sizeof(File) * i, file, sizeof(File));
+			i++;
+		}
+	}
+
+	return buffer;
+}
+
 void print_fifo(Node *cache) {
 	
     printf("==== Cache FIFO List ====\n");

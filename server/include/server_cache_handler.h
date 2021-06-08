@@ -36,6 +36,8 @@ void decrease_file_opens(File *file);
 
 int get_files_opens(File *file);
 
+char *get_n_files_cache(int nFiles);
+
 void print_cache();
 
 void destroy_cache();

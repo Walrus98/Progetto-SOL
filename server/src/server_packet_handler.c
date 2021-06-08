@@ -36,7 +36,6 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
     switch (packetID) {
 
         case OPEN_FILE:
-            printf("Anale\n");
             fileLength = *((int *) payload);
             filePath = payload + sizeof(int);
             flagCreate = *((int *) (payload + sizeof(int) + fileLength));

@@ -18,7 +18,7 @@
 
 int main(void) {
 
-    int fd_skt, fd_c;
+    int fd_skt;
     char buf[N];
     struct sockaddr_un sa;
     strncpy(sa.sun_path, SOCKNAME, UNIX_PATH_MAX);
@@ -34,7 +34,7 @@ int main(void) {
             exit(EXIT_FAILURE);
     }
 
-    char nameFile[5] = "ciao"; // c i a o \0
+    char nameFile[5] = "cia3"; // c i a o \0
     int nameLength = strlen(nameFile) + 1;
 
     // char contentFile[13] = "hello world!";
@@ -71,59 +71,124 @@ int main(void) {
         sleep(2);
     } 
 
-    id = 6;
+    // id = 1;
+    
+    // if (id == 1) {
 
-    if (id == 6) {
+    //     printf("ESEGUO READ\n");
 
-        printf("ESEGUO CLOSE\n");
+    //     payloadLength = sizeof(int) + nameLength;
 
-        payloadLength = sizeof(int) + nameLength;
+    //     char *header = malloc(sizeof(int) * 2);
+    //     memcpy(header, &id, sizeof(int));
+    //     memcpy(header + 4, &payloadLength, sizeof(int));        
 
-        char *header = malloc(sizeof(int) * 2);
-        memcpy(header, &id, sizeof(int));
-        memcpy(header + 4, &payloadLength, sizeof(int));        
+    //     // payload
+    //     char *payload = malloc(payloadLength);
+    //     memcpy(payload, &nameLength, sizeof(int));
+    //     memcpy(payload + 4, nameFile, nameLength);
 
-        // payload
-        char *payload = malloc(payloadLength);
-        memcpy(payload, &nameLength, sizeof(int));
-        memcpy(payload + 4, nameFile, nameLength);
-
-        write(fd_skt, header, sizeof(int) * 2);
-        write(fd_skt, payload, payloadLength);
+    //     write(fd_skt, header, sizeof(int) * 2);
+    //     write(fd_skt, payload, payloadLength);
         
-        read(fd_skt, buf, N);
-        printf("Client got : %s\n\n", buf);
 
-    }
+    //     char *headerResponse = malloc(sizeof(int));
 
-    id = 0;
-    ocreate = 0;
-    olock = 0;
-    payloadLength = sizeof(int) + nameLength + sizeof(int) +  sizeof(int);
+    //     read(fd_skt, headerResponse,  sizeof(int));
+    //     int packetSize = *((int *) headerResponse);
 
-    if (id == 0) {
+    //     char *payloadResponse = malloc(sizeof(packetSize));
+    //     read(fd_skt, payloadResponse, packetSize);
+    //     printf("Client got : %s\n\n", payloadResponse);
 
-        printf("ESEGUO OPEN\n");
-        char *header = malloc(sizeof(int) * 2);
-        memcpy(header, &id, sizeof(int));
-        memcpy(header + 4, &payloadLength, sizeof(int));
+    //     sleep(2);
+    // }
 
-        // payload
-        char *payload = malloc(payloadLength);
-        memcpy(payload, &nameLength, sizeof(int));
-        memcpy(payload + 4, nameFile, nameLength);
-        memcpy(payload + 4 + nameLength, &ocreate, sizeof(int));
-        memcpy(payload + 4 + nameLength + 4, &olock, sizeof(int));
-
-        // for (int i = 0; i < 1; i++) {
-        write(fd_skt, header, sizeof(int) * 2);
-        write(fd_skt, payload, payloadLength);
-
-        read(fd_skt, buf, N);
-        printf("Client got : %s\n\n", buf);
+    // id = 3;
         
-        sleep(2);
-    } 
+    // if (id == 3) {
+
+    //     printf("ESEGUO WRITE\n");
+
+    //     payloadLength = sizeof(int) + nameLength;
+
+    //     char *header = malloc(sizeof(int) * 2);
+    //     memcpy(header, &id, sizeof(int));
+    //     memcpy(header + 4, &payloadLength, sizeof(int));        
+
+    //     // payload
+    //     char *payload = malloc(payloadLength);
+    //     memcpy(payload, &nameLength, sizeof(int));
+    //     memcpy(payload + 4, nameFile, nameLength);
+
+    //     write(fd_skt, header, sizeof(int) * 2);
+    //     write(fd_skt, payload, payloadLength);
+        
+    //     read(fd_skt, buf, N);
+    //     printf("Client got : %s\n\n", buf);
+
+    //     sleep(2);
+    // }
+
+    
+
+    
+
+    // id = 6;
+
+    // if (id == 6) {
+
+    //     printf("ESEGUO CLOSE\n");
+
+    //     payloadLength = sizeof(int) + nameLength;
+
+    //     char *header = malloc(sizeof(int) * 2);
+    //     memcpy(header, &id, sizeof(int));
+    //     memcpy(header + 4, &payloadLength, sizeof(int));        
+
+    //     // payload
+    //     char *payload = malloc(payloadLength);
+    //     memcpy(payload, &nameLength, sizeof(int));
+    //     memcpy(payload + 4, nameFile, nameLength);
+
+    //     write(fd_skt, header, sizeof(int) * 2);
+    //     write(fd_skt, payload, payloadLength);
+        
+    //     read(fd_skt, buf, N);
+    //     printf("Client got : %s\n\n", buf);
+
+    // }
+
+    // id = 0;
+    // ocreate = 0;
+    // olock = 0;
+    // payloadLength = sizeof(int) + nameLength + sizeof(int) +  sizeof(int);
+
+    // if (id == 0) {
+
+    //     printf("ESEGUO OPEN\n");
+    //     char *header = malloc(sizeof(int) * 2);
+    //     memcpy(header, &id, sizeof(int));
+    //     memcpy(header + 4, &payloadLength, sizeof(int));
+
+    //     // payload
+    //     char *payload = malloc(payloadLength);
+    //     memcpy(payload, &nameLength, sizeof(int));
+    //     memcpy(payload + 4, nameFile, nameLength);
+    //     memcpy(payload + 4 + nameLength, &ocreate, sizeof(int));
+    //     memcpy(payload + 4 + nameLength + 4, &olock, sizeof(int));
+
+    //     // for (int i = 0; i < 1; i++) {
+    //     write(fd_skt, header, sizeof(int) * 2);
+    //     write(fd_skt, payload, payloadLength);
+
+    //     read(fd_skt, buf, N);
+    //     printf("Client got : %s\n\n", buf);
+        
+    //     sleep(2);
+    // } 
+
+
 
     // id = 1;
     

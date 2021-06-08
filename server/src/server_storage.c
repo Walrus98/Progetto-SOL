@@ -34,6 +34,7 @@ void destroy_storage();
 // Metodi della mappa
 int add_client_files(int fileDescriptor, char *filePath, int flagLock);
 FileOpened *get_client_files(Node *fdList, char *path);
+void remove_client_files(Node **fdList, char *filePath);
 void print_client_files();
 
 // Metodi per gestire le richieste inviate dai client
@@ -76,7 +77,27 @@ void insert_storage(File file) {
         
         File *fileToRemove = replacement_file_cache();
 
+        CURRENT_STORAGE_SIZE -= *(fileToRemove->fileSize);
+        CURRENT_FILE_AMOUNT--;
+
         fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", fileToRemove->filePath);
+                
+        LOCK(&clientFilesMutex);
+
+        icl_entry_t *bucket, *curr;
+        // Itero tutta la mappa e cancello il fileOpen
+        for (int i = 0; i < clientFiles->nbuckets; i++) {
+            bucket = clientFiles->buckets[i];
+            for (curr = bucket; curr != NULL;) {
+                if (curr->key) {
+                    Node* fdList = curr->data;
+                    remove_client_files(&fdList, fileToRemove->filePath);
+                }
+                curr = curr->next;
+            }
+        }     
+
+        UNLOCK(&clientFilesMutex);  
 
         free(fileToRemove->filePath);
         free(fileToRemove->fileContent);
@@ -91,8 +112,28 @@ void insert_storage(File file) {
         fprintf(stderr, "ATTENZIONE: raggiunta la dimensione massima dello Storage.\n");
         
         File *fileToRemove = replacement_file_cache();
+        
+        CURRENT_STORAGE_SIZE -= *(fileToRemove->fileSize);
+        CURRENT_FILE_AMOUNT--;
 
         fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", fileToRemove->filePath);
+
+        LOCK(&clientFilesMutex);
+
+        icl_entry_t *bucket, *curr;
+        // Itero tutta la mappa e cancello il fileOpened che ha il nome del file rimosso
+        for (int i = 0; i < clientFiles->nbuckets; i++) {
+            bucket = clientFiles->buckets[i];
+            for (curr = bucket; curr != NULL;) {
+                if (curr->key) {
+                    Node* fdList = curr->data;
+                    remove_client_files(&fdList, fileToRemove->filePath);
+                }
+                curr = curr->next;
+            }
+        }     
+
+        UNLOCK(&clientFilesMutex); 
 
         free(fileToRemove->filePath);
         free(fileToRemove->fileContent);
@@ -124,9 +165,11 @@ void print_storage() {
 
 void destroy_storage() {
 
+    LOCK(&clientFilesMutex);
+
     icl_entry_t *bucket, *curr;
 
-    // Itero tutta la mappa e cancello il fileLock
+    // Itero tutta la mappa e cancello il fileOpened
     for (int i = 0; i < clientFiles->nbuckets; i++) {
         bucket = clientFiles->buckets[i];
         for (curr = bucket; curr != NULL;) {
@@ -159,6 +202,9 @@ void destroy_storage() {
   
     // Cancello tutte le chiavi della mappa
     icl_hash_destroy(clientFiles, free, NULL);
+    
+    UNLOCK(&clientFilesMutex);
+
     destroy_cache();
 }
 
@@ -264,6 +310,9 @@ FileOpened *get_client_files(Node *fdList, char *path) {
 }
 
 void print_client_files() {
+    
+    LOCK(&clientFilesMutex); 
+
     icl_entry_t *bucket, *curr;
 
     printf("==== Client Files Map ====\n");
@@ -285,6 +334,8 @@ void print_client_files() {
     }
 
     printf("\n");
+    
+    UNLOCK(&clientFilesMutex);   
 }
 
 // ========================= METODI CHE GESTISOCNO LE RICHIESTE DEI CLIENT =========================
@@ -365,6 +416,15 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
     print_storage();
     
     return payload;
+}
+
+void *read_n_file(int nFiles, int *bufferSize) {
+
+    if (nFiles <= 0 || nFiles > CURRENT_FILE_AMOUNT) {
+        return get_n_files_cache(CURRENT_FILE_AMOUNT);
+    }
+    
+    return get_n_files_cache(nFiles);
 }
 
 int write_file(int fileDescriptor, char *filePath, char *fileContent) {

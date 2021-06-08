@@ -11,8 +11,11 @@ File *pop_fifo(Node **cache);
 
 File *get_file_fifo(Node *cache, char *filePath);
 
+char *get_n_files_fifo(Node *cache, int nFiles);
+
 void print_fifo(Node *cache);
 
 void destroy_fifo(Node **cache);
+
 
 #endif

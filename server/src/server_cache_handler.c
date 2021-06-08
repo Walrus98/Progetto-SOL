@@ -158,34 +158,25 @@ int get_files_opens(File *file) {
     return opens;
 }
 
-
-
-// int update_file_lock(File *file, int flagLock) {
-
-//     LOCK(&cacheMutex);
-
-//     *(file->fileLocked) = flagLock
-
-//     UNLOCK(&cacheMutex);
-
-//     return 1;
+char* get_n_files_cache(int nFiles) {
     
-    // LOCK(&cacheMutex);
+    LOCK(&cacheMutex);
 
-    // if (*(file->fileLocked) == 1) {
+    char *buffer = NULL;
 
-    //     UNLOCK(&cacheMutex);
-    //     return -1;
-    // }
+    switch (REPLACEMENT_POLICY) {
+        case FIFO_POLICY:
+            buffer = get_n_files_fifo(cacheFIFO, nFiles);
+            UNLOCK(&cacheMutex);
+            return buffer;
+        default:
+            break;
+    }
+    
+    UNLOCK(&cacheMutex);
 
-    // *(file->fileLocked) = flagLock;
-
-    // printf("Valore aggiornato! %d\n", *(file->fileLocked));
-
-    // UNLOCK(&cacheMutex);
-
-    // return 1;
-// }
+    return NULL;
+}
 
 void print_cache() {
     LOCK(&cacheMutex);
@@ -194,8 +185,6 @@ void print_cache() {
         case FIFO_POLICY:
             print_fifo(cacheFIFO);
             UNLOCK(&cacheMutex);
-        case 1:
-            break;
         default:
             break;
     }
@@ -211,8 +200,6 @@ void destroy_cache() {
         case FIFO_POLICY:
             destroy_fifo(&cacheFIFO);
             UNLOCK(&cacheMutex);
-            break;
-        case 1:
             break;
         default:
             break;
