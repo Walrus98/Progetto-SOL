@@ -29,9 +29,11 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
     int fileLength;
     char *filePath;
+    int contentLength;
     int response;
     int flagCreate;
     int flagLock;
+
 
     switch (packetID) {
 
@@ -76,7 +78,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             fileLength = *((int *) payload);
             filePath = payload + 4;
 
-            int contentLength = 0;
+            contentLength = 0;
             char *content = read_file(fileDescriptor, filePath, &contentLength);
 
             // Se l'utente non ha eseguito la open sul file
@@ -115,11 +117,12 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
         case WRITE_FILE:
             ;
             fileLength = *((int *) payload);
-            filePath = payload + 4;
+            filePath = payload + sizeof(int);
 
-            char fileContent[7] = "BAUBAB";
+            contentLength = *((int *) (payload + sizeof(int) + fileLength));
+            content = (payload + sizeof(int) + fileLength + sizeof(int));
 
-            response = write_file(fileDescriptor, filePath, fileContent);
+            response = write_file(fileDescriptor, filePath, content);
 
             if (response == 1) {
                 write(fileDescriptor, "Write eseguita con successo!", 100); 
