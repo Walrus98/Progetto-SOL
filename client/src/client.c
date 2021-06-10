@@ -81,7 +81,7 @@ void read_arguments(int argc, char *argv[]) {
 void handle_socket_connection(char *socketName) {
     struct timespec abstime;
     
-    open_connection(socketName, 1000, abstime);
+    openConnection(socketName, 1000, abstime);
 }
 
 void handle_write_dir(char *optarg) {
@@ -120,11 +120,7 @@ void handle_write_files(char *optarg) {
         
         openFile(token, 1);
 
-        sleep(2);
-
         writeFile(token, NULL);
-
-        sleep(2);
 
         token = strtok(NULL, ",");
     }

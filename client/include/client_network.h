@@ -11,9 +11,9 @@
 #define CLOSE_FILE 6
 #define REMOVE_FILE 7
 
-int open_connection(const char* sockname, int msec, const struct timespec abstime);
+int openConnection(const char* sockname, int msec, const struct timespec abstime);
 
-int close_connection(const char* sockname);
+int closeConnection(const char* sockname);
 
 int openFile(const char* pathname, int flags);
 
