@@ -52,25 +52,27 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = open_file(fileDescriptor, filePath, flagCreate, flagLock);
 
-            switch (response) {
-                case 1:
-                    write(fileDescriptor, "Apertura del File eseguita con successo!", 100);
-                    break;
-                case 0:
-                    write(fileDescriptor, "Impossibile aprire il File!", 100);
-                    break;
-                case -1:
-                    write(fileDescriptor, "Impossibile eseguire open multiple sullo stesso file!", 100);
-                    break;
-                case -2:
-                    write(fileDescriptor, "Impossibile eseguire la open sul file richiesto perché è in stato di Locked", 100); 
-                    break;
-                case -3:
-                    write(fileDescriptor, "Impossibile eseguire la open sul file con il flag di Lock a 1 perché in questo momento è aperto da altri utenti", 100); 
-                    break;
-                default:
-                    break;
-            }
+            write(fileDescriptor, &response, 4);
+
+            // switch (response) {
+            //     case 1:
+            //         write(fileDescriptor, "Apertura del File eseguita con successo!", 100);
+            //         break;
+            //     case 0:
+            //         write(fileDescriptor, "Impossibile aprire il File!", 100);
+            //         break;
+            //     case -1:
+            //         write(fileDescriptor, "Impossibile eseguire open multiple sullo stesso file!", 100);
+            //         break;
+            //     case -2:
+            //         write(fileDescriptor, "Impossibile eseguire la open sul file richiesto perché è in stato di Locked", 100); 
+            //         break;
+            //     case -3:
+            //         write(fileDescriptor, "Impossibile eseguire la open sul file con il flag di Lock a 1 perché in questo momento è aperto da altri utenti", 100); 
+            //         break;
+            //     default:
+            //         break;
+            // }
             break;
 
         case READ_FILE:
@@ -138,8 +140,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
         case CLOSE_FILE:            
             ;
-            fileLength = *((int *) payload);
-            filePath = payload + 4;
+            filePath = payload;
 
             response = close_file(fileDescriptor, filePath);
 

@@ -21,11 +21,12 @@ void handle_socket_connection(char *socketName);
 void handle_write_dir(char *optarg);
 void handle_write_files(char *optarg);
 void handle_read_files(char *optarg);
+void handle_read_n_files(char *optarg);
+void handle_remove_file(char *optarg);
 
 //
 static void check_attribute(char *path, int n);
 static void read_directories(char *dirName, int n);
-
 
 int main(int argc, char *argv[]) {
 
@@ -42,13 +43,12 @@ int main(int argc, char *argv[]) {
 void read_arguments(int argc, char *argv[]) {
  
     int opt;
-    while ((opt = getopt(argc, argv, ": f: w: W: r: h")) != -1) {
+    while ((opt = getopt(argc, argv, ": f: w: W: r: c: h")) != -1) {
         switch (opt) {
             case 'h':
                 printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n");
                 printf("-w dirname : invia al server i file nella cartella 'dirname'\n");
                 break;
-
             case 'f':
                 handle_socket_connection(optarg);
                 break;
@@ -61,13 +61,13 @@ void read_arguments(int argc, char *argv[]) {
             case 'r':
                 handle_read_files(optarg);
                 break;
-
+            case 'R':
+                handle_read_n_files(optarg);
+                break;
+            case 'c':
+                handle_remove_file(optarg);
+                break;
             case ':':
-                // if (optopt == 'w') {                    
-                //     handle_write_dir(0);
-                //     break;
-                // }
-
                 printf("l'opzione '-%c' richiede un argomento\n", optopt);
                 break;
             case '?': 
@@ -129,7 +129,6 @@ void handle_write_dir(char *optarg) {
          free(argument[i]);
     }
     free(argument);
-
 }
 
 void handle_write_files(char *optarg) {
@@ -137,8 +136,9 @@ void handle_write_files(char *optarg) {
     char *token = strtok(optarg, ",");
     while (token) {
 
-        openFile(token, 1);
+        if (openFile(token, O_CREATE) == -1) openFile(token, NO_ARG);
         writeFile(token, NULL);
+        closeFile(token);
 
         token = strtok(NULL, ",");
     }
@@ -148,8 +148,25 @@ void handle_read_files(char *optarg) {
     char *token = strtok(optarg, ",");
     while (token) {
 
-        openFile(token, 1);
+        openFile(token, NO_ARG);
         readFile(token, NULL, NULL);
+        closeFile(token);
+
+        token = strtok(NULL, ",");
+    }
+}
+
+void handle_read_n_files(char *optarg) {
+
+}
+
+void handle_remove_file(char *optarg) {
+    char *token = strtok(optarg, ",");
+    while (token) {
+
+        openFile(token, O_LOCK); // lock 1
+        removeFile(token);
+        // closeFile(token);
 
         token = strtok(NULL, ",");
     }
@@ -170,8 +187,11 @@ void check_attribute(char *path, int n) {
 
     if (S_ISREG(info.st_mode)) {
         printf("FILE! %s\n", path);
-        openFile(path, 1);
+        
+        openFile(path, O_CREATE);
         writeFile(path, NULL);
+        closeFile(path);
+
         cont++;
     } else if (S_ISDIR(info.st_mode)) {
         printf("DIRECTORY! %s\n", path);

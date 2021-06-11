@@ -1,6 +1,11 @@
 #ifndef CLIENT_NETWORK_H
 #define CLIENT_NETWORK_H
 
+
+#define NO_ARG 0x00
+#define O_LOCK 0x01
+#define O_CREATE 0x02
+
 #define OPEN_FILE 0
 #define READ_FILE 1
 #define READ_N_FILES 2
@@ -10,6 +15,7 @@
 #define UNLOCK_FILE 6
 #define CLOSE_FILE 6
 #define REMOVE_FILE 7
+
 
 int openConnection(const char* sockname, int msec, const struct timespec abstime);
 
