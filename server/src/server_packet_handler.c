@@ -75,8 +75,8 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
         case READ_FILE:
             ;
-            fileLength = *((int *) payload);
-            filePath = payload + 4;
+            // fileLength = *((int *) payload);
+            filePath = payload;
 
             contentLength = 0;
             char *content = read_file(fileDescriptor, filePath, &contentLength);

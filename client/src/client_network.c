@@ -62,6 +62,7 @@ int closeConnection(const char* sockname) {
  * descritta di seguito.
  * Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene settato opportunamente. 
  **/
+
 int openFile(const char* pathname, int flags) {
 
     FILE *file = NULL;
@@ -72,11 +73,14 @@ int openFile(const char* pathname, int flags) {
 
     printf("Invio una open di %s\n", pathname);
 
+    // char absolutePath[1000];
+    // realpath("prova/test2", absolutePath);
+
     int id = OPEN_FILE;
     int pathLength = strlen(pathname) + 1;
     int ocreate = 1;
     int olock = 0;
-    int payloadLength = sizeof(int) + pathLength + sizeof(int) +  sizeof(int);
+    int payloadLength = sizeof(int) + pathLength + sizeof(int) + sizeof(int);
 
     // Header
     char *header = malloc(sizeof(int) * 2);
@@ -109,7 +113,52 @@ int openFile(const char* pathname, int flags) {
     }
 }
 
+/**
+ * Legge tutto il contenuto del file dal server (se esiste) ritornando un puntatore ad un'area allocata sullo heap nel
+ * parametro ‘buf’, mentre ‘size’ conterrà la dimensione del buffer dati (ossia la dimensione in bytes del file letto). In
+ * caso di errore, ‘buf‘e ‘size’ non sono validi. Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene
+ * settato opportunamente.
+ **/
 int readFile(const char* pathname, void** buf, size_t* size) {
+    
+    FILE *file = NULL;
+    if ((file = fopen(pathname, "r")) == NULL) {
+        perror("ERRORE: apertura del file");
+        exit(errno);
+    }
+
+    int id = READ_FILE;
+    int pathLength = strlen(pathname) + 1;
+    int payloadLength = sizeof(int) + pathLength;
+
+    // Header
+    char *header = malloc(sizeof(int) * 2);
+    memcpy(header, &id, sizeof(int));
+    memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
+
+    // Payload
+    char *payload = malloc(payloadLength);
+    // memcpy(payload, &pathLength, sizeof(int));
+    memcpy(payload, pathname, pathLength);
+
+    write(SERVER_SOCKET, header, sizeof(int) * 2);
+    write(SERVER_SOCKET, payload, payloadLength);
+
+    // Response Header
+    char *headerResponse = malloc(sizeof(int));
+    read(SERVER_SOCKET, headerResponse,  sizeof(int));
+    int packetSize = *((int *) headerResponse);
+
+    // Response Payload
+    char *payloadResponse = malloc(sizeof(packetSize));
+    read(SERVER_SOCKET, payloadResponse, packetSize);
+
+    printf("Client got : %s\n\n", payloadResponse);
+
+    if (fclose(file) != 0) {
+        perror("ERRORE: chiusura del file");
+        exit(EXIT_FAILURE);
+    }
 
 }
 
@@ -131,14 +180,14 @@ int writeFile(const char* pathname, const char* dirname) {
         exit(errno);
     }
 
+    printf("Invio una write di %s\n", pathname);
+
     fseek(file, 0, SEEK_END);
     int textLength = ftell(file);
     fseek(file, 0, SEEK_SET);
 
     char *content = malloc(textLength);
     fread(content, 1, textLength, file); 
-
-    printf("Invio una write di %s\n", pathname);
 
     int id = WRITE_FILE;
     int pathLength = strlen(pathname) + 1;

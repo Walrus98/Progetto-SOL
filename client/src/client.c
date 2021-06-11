@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
 void read_arguments(int argc, char *argv[]) {
  
     int opt;
-    while ((opt = getopt(argc, argv, ": f: w: W: h")) != -1) {
+    while ((opt = getopt(argc, argv, ": f: w: W: r: h")) != -1) {
         switch (opt) {
             case 'h':
                 printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n");
@@ -134,25 +134,25 @@ void handle_write_dir(char *optarg) {
 
 void handle_write_files(char *optarg) {
 
-    char buffer[100];
-    if (getcwd(buffer, 100)==NULL) {
-        perror("getcwd"); 
-        exit(EXIT_FAILURE);
-    }
-
     char *token = strtok(optarg, ",");
     while (token) {
-        
-        strcat(buffer, token);
-        openFile(buffer, 1);
-        writeFile(buffer, NULL);
+
+        openFile(token, 1);
+        writeFile(token, NULL);
 
         token = strtok(NULL, ",");
     }
 }
 
-void handle_read_files(char *files) {
+void handle_read_files(char *optarg) {
+    char *token = strtok(optarg, ",");
+    while (token) {
 
+        openFile(token, 1);
+        readFile(token, NULL, NULL);
+
+        token = strtok(NULL, ",");
+    }
 }
 
 // ====================
