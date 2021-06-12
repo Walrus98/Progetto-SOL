@@ -59,10 +59,11 @@ char *get_n_files_fifo(Node *cache, int nFiles, int *bufferSize) {
 		*bufferSize += pathLength + contentLength + sizeof(int) * 2;		
 	}
 
-	char *buffer = (char *) malloc(*bufferSize);
-	char *currentPosition = buffer;
+	char *buffer = (char *) malloc(*bufferSize + sizeof(int));
+	char *currentPosition = buffer + sizeof(int);
 
-	for (int i = 0; cache != NULL && i < nFiles; cache = cache->next) {
+	int i;
+	for (i = 0; cache != NULL && i < nFiles; cache = cache->next) {
 		File *file = (File *) cache->value;
 
 		int pathLength = strlen(file->filePath) + 1; 
@@ -73,10 +74,17 @@ char *get_n_files_fifo(Node *cache, int nFiles, int *bufferSize) {
 		memcpy(currentPosition, file->filePath, pathLength);
 		currentPosition += pathLength;
 		memcpy(currentPosition, &contentLength, sizeof(int));
+		printf("FILE CONTENT SIZE %d\n", *((int *) currentPosition));
 		currentPosition += sizeof(int);
+
 		memcpy(currentPosition, file->fileContent, contentLength);
+		printf("FILE CONTENT %s\n", currentPosition);
 		currentPosition += contentLength;
+
+		i++;
 	}
+
+	memcpy(buffer, &i, sizeof(int));
 
 	return buffer;
 }

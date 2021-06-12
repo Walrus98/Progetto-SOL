@@ -110,6 +110,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             char *test = read_n_file(n, &bufferSize);
 
             write(fileDescriptor, &bufferSize, sizeof(int));
+            printf("Dimensione Buffer Size %d\n", bufferSize);
             write(fileDescriptor, test, bufferSize);
 
             free(test);

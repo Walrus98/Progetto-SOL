@@ -11,22 +11,39 @@
 #include <unistd.h>
 
 #include "../include/client_network.h"
+#include "../include/list_utils.h"
 #include "../include/utils.h"
 
-#define STRING_SIZE 100
+typedef struct Argument {
+    char *command;
+    char *argument;
+} Argument;
 
 // Metodi per leggere gli argomenti passati da linea di comando
-void read_arguments(int argc, char *argv[]);
-void handle_socket_connection(char *socketName);
-void handle_write_dir(char *optarg);
-void handle_write_files(char *optarg);
-void handle_read_files(char *optarg);
-void handle_read_n_files(char *optarg);
-void handle_remove_file(char *optarg);
+static void read_arguments(int argc, char *argv[]);
+static void addArgument(char c, char *arg);
+static void execute_arguments();
 
-//
+// Metodi per gestire le richieste dei client
+static void handle_socket_connection(char *socketName);
+static void handle_write_dir(char *optarg);
+static void handle_write_files(char *optarg);
+static void handle_read_files(char *optarg);
+static void handle_read_n_files(char *optarg);
+static void handle_remove_file(char *optarg);
+
+// Metodi aggiuntivi 
 static void check_attribute(char *path, int n);
 static void read_directories(char *dirName, int n);
+
+static Node *argumentList;
+
+static int fun_compare(void *a, void *b) {
+    Argument *arg = (Argument *) a;
+    char command = *((char *) b);
+
+    return *(arg->command) == command;
+}
 
 int main(int argc, char *argv[]) {
 
@@ -35,7 +52,10 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    create_list(&argumentList, fun_compare);
+
     read_arguments(argc, argv);
+    execute_arguments();
 
     return EXIT_SUCCESS;
 }
@@ -43,30 +63,31 @@ int main(int argc, char *argv[]) {
 void read_arguments(int argc, char *argv[]) {
  
     int opt;
-    while ((opt = getopt(argc, argv, ": f: w: W: r: c: h")) != -1) {
+    while ((opt = getopt(argc, argv, ": f: w: W: r: R: c: h")) != -1) {
         switch (opt) {
-            case 'h':
-                printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n");
-                printf("-w dirname : invia al server i file nella cartella 'dirname'\n");
-                break;
-            case 'f':
-                handle_socket_connection(optarg);
-                break;
-            case 'w':
-                handle_write_dir(optarg);
-                break;
-            case 'W':
-                handle_write_files(optarg);
-                break;
-            case 'r':
-                handle_read_files(optarg);
-                break;
-            case 'R':
-                handle_read_n_files(optarg);
-                break;
-            case 'c':
-                handle_remove_file(optarg);
-                break;
+            // case 'h':
+            //     printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n");
+            //     printf("-w dirname : invia al server i file nella cartella 'dirname'\n");
+            //     break;
+            // case 'f':
+            //     addArgument('f');
+            //     handle_socket_connection(optarg);
+            //     break;
+            // case 'w':
+            //     handle_write_dir(optarg);
+            //     break;
+            // case 'W':
+            //     handle_write_files(optarg);
+            //     break;
+            // case 'r':
+            //     handle_read_files(optarg);
+            //     break;
+            // case 'R':
+            //     handle_read_n_files(optarg);
+            //     break;
+            // case 'c':
+            //     handle_remove_file(optarg);
+            //     break;
             case ':':
                 printf("l'opzione '-%c' richiede un argomento\n", optopt);
                 break;
@@ -74,10 +95,63 @@ void read_arguments(int argc, char *argv[]) {
                 printf("l'opzione '-%c' non e' gestita\n", optopt);
                 break;
             default:
-                break;
+                addArgument(opt, optarg);
         }
     }
 }
+
+void addArgument(char c, char *arg) {
+    Argument *newArg = (Argument *) malloc(sizeof(Argument));
+    char *command = (char *) malloc(sizeof(char));
+    char *argument = (char *) malloc(sizeof(char) * strlen(arg) + 1);
+
+    *command = c;
+    strncpy(argument, arg, strlen(arg) + 1);
+
+    newArg->command = command;
+    newArg->argument = argument;
+
+    add_tail(&argumentList, newArg);
+}
+
+// char *get_arguments(char c) {
+//     Node *currentList;
+//     for (currentList = argumentList; currentList != NULL; currentList = currentList->next) {
+//         Argument *argument = (Argument *) currentList->value;
+//         if (argument->command == c) {
+//             return argument->argument;
+//         }
+//     }
+//     return 0;
+// }
+
+void execute_arguments() {
+
+    // char prova = 'f';
+    // Argument *arg = (Argument *) get_value(argumentList, &prova);
+
+    // printf("%c\n", *(arg->command));
+    // printf("%s\n", arg->argument);
+
+    Argument *arg;
+    char command;
+
+    command = 'p';
+    if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+
+    }
+
+    command = 't';
+    if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+    }
+    
+    command = 'f';
+    if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        handle_socket_connection(arg->argument);
+        remove_value(&argumentList, arg);
+    }
+}
+
 
 void handle_socket_connection(char *socketName) {
     struct timespec abstime;

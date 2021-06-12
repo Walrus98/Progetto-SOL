@@ -29,17 +29,17 @@ static char* SOCKET_PATH;
  **/
 int openConnection(const char* sockname, int msec, const struct timespec abstime) {
 
-    // Controllo se ho già effettuato una connessione al server
-    if (SOCKET_PATH != NULL || SERVER_SOCKET != -1) {
-        errno = EISCONN;
-        return -1;
-    }
+    // // Controllo se ho già effettuato una connessione al server
+    // if (SOCKET_PATH != NULL || SERVER_SOCKET != -1) {
+    //     errno = EISCONN;
+    //     return -1;
+    // }
 
-    // Controllo se gli argomenti passati per parametro sono validi
-    if(sockname == NULL || msec < 0) {
-        errno = EINVAL;
-        return -1;
-    }
+    // // Controllo se gli argomenti passati per parametro sono validi
+    // if(sockname == NULL || msec < 0) {
+    //     errno = EINVAL;
+    //     return -1;
+    // }
 
     struct sockaddr_un sa;
     memset(&sa, '0', sizeof(sa));
@@ -48,11 +48,11 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
 
     SERVER_SOCKET = socket(AF_UNIX, SOCK_STREAM, 0);
 
-    struct timespec timeWait;
-    set_timespec_from_msec(msec, &timeWait);
+    // struct timespec timeWait;
+    // set_timespec_from_msec(msec, &timeWait);
 
-    struct timespec currTime;
-    clock_gettime(CLOCK_REALTIME, &currTime);
+    // struct timespec currTime;
+    // clock_gettime(CLOCK_REALTIME, &currTime);
 
     while (connect(SERVER_SOCKET, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
         if (errno == ENOENT) {
@@ -62,7 +62,7 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
             exit(EXIT_FAILURE);
     }
 
-    SOCKET_PATH = sockname;
+    // strncpy(SOCKET_PATH, sockname, strlen(sockname));
     
     return 0;
 }
@@ -253,12 +253,17 @@ int readNFiles(int N, const char* dirname) {
 
     read(SERVER_SOCKET, payloadResponse, packetSize);    
 
-    char *currentPosition = payloadResponse;
-    while (currentPosition != NULL) {
+    int filesAmount =  *((int *) payloadResponse);
+
+    printf("%d\n", filesAmount);
+
+    char *currentPosition = payloadResponse + sizeof(int);
+    for (int i = 0; i < filesAmount; i++) {
 
         int pathLength = *((int *) currentPosition);
         currentPosition += sizeof(int);
         
+
         char *path = malloc(sizeof(char) * pathLength);
         strncpy(path, currentPosition, pathLength);
         currentPosition += pathLength;
@@ -269,6 +274,11 @@ int readNFiles(int N, const char* dirname) {
         char *content = malloc(sizeof(char) * contentLength);
         strncpy(content, currentPosition, contentLength);
         currentPosition += contentLength;
+
+        
+
+        printf("%d\n", pathLength);
+        printf("%d\n", contentLength);
 
         printf("File Path: %s\n", path);
         printf("File Content: %s\n", content);
