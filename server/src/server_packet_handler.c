@@ -104,7 +104,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
         case READ_N_FILES:
             ;
 
-            int n = 2;
+            int n = *((int *) payload);
             int bufferSize = 0;
 
             char *test = read_n_file(n, &bufferSize);

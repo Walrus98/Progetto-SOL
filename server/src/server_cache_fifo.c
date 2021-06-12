@@ -49,13 +49,6 @@ File *get_file_fifo(Node *cache, char *filePath) {
 
 char *get_n_files_fifo(Node *cache, int nFiles, int *bufferSize) {
 
-	// int diocane = 5;
-
-	// char *asd = malloc(sizeof(int));
-	// memcpy(asd, &diocane, sizeof(int));
- 	// int packetSize = *((int *) asd);
-	// printf("%d\n", packetSize);
-
 	Node *tempCache = cache;
 	for (int i = 0; tempCache != NULL && i < nFiles; tempCache = tempCache->next) {
 		File *file = (File *) tempCache->value;
@@ -67,7 +60,6 @@ char *get_n_files_fifo(Node *cache, int nFiles, int *bufferSize) {
 	}
 
 	char *buffer = (char *) malloc(*bufferSize);
-
 	char *currentPosition = buffer;
 
 	for (int i = 0; cache != NULL && i < nFiles; cache = cache->next) {

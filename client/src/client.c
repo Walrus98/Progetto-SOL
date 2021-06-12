@@ -157,14 +157,24 @@ void handle_read_files(char *optarg) {
 }
 
 void handle_read_n_files(char *optarg) {
+    if (optarg == NULL) {
+        readNFiles(0, NULL);
+        return;
+    } 
 
+    long nFiles;
+    if (isNumber(optarg, &nFiles)) {
+        readNFiles((int) nFiles, NULL);
+    } else {
+        fprintf(stderr, "L'argomento passato per parametro deve essere un numero! Digita -h per vedere i comandi disponibili.\n");
+    }
 }
 
 void handle_remove_file(char *optarg) {
     char *token = strtok(optarg, ",");
     while (token) {
 
-        openFile(token, O_LOCK); // lock 1
+        if (openFile(token, O_CREATE) == -1) openFile(token, NO_ARG);
         removeFile(token);
         // closeFile(token);
 
@@ -210,7 +220,6 @@ void read_directories(char *dirName, int n) {
     struct dirent* file;
 
     char buf[100];
-
     if (getcwd(buf, 100)==NULL) {
         perror("getcwd"); 
         exit(EXIT_FAILURE);

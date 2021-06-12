@@ -16,6 +16,10 @@
 
 #define UNIX_PATH_MAX 108 
 #define BUFFER_RESPONSE_SIZE 100
+#define PATH_SIZE 1024
+
+static int SERVER_SOCKET;
+static char* SOCKET_PATH;
 
 /**
  * Viene aperta una connessione AF_UNIX al socket file sockname. Se il server non accetta immediatamente la
@@ -23,19 +27,32 @@
  * scadere del tempo assoluto ‘abstime’ specificato come terzo argomento. Ritorna 0 in caso di successo, -1 in caso
  * di fallimento, errno viene settato opportunamente.
  **/
-
-static int SERVER_SOCKET;
-static struct sockaddr_un sa;
-
 int openConnection(const char* sockname, int msec, const struct timespec abstime) {
-    
+
+    // Controllo se ho già effettuato una connessione al server
+    if (SOCKET_PATH != NULL || SERVER_SOCKET != -1) {
+        errno = EISCONN;
+        return -1;
+    }
+
+    // Controllo se gli argomenti passati per parametro sono validi
+    if(sockname == NULL || msec < 0) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    struct sockaddr_un sa;
+    memset(&sa, '0', sizeof(sa));
     strncpy(sa.sun_path, sockname, UNIX_PATH_MAX);
     sa.sun_family = AF_UNIX;
 
     SERVER_SOCKET = socket(AF_UNIX, SOCK_STREAM, 0);
 
-    // struct timespec timeWait;
-    // set_timespec_from_msec(msec, &timeWait);
+    struct timespec timeWait;
+    set_timespec_from_msec(msec, &timeWait);
+
+    struct timespec currTime;
+    clock_gettime(CLOCK_REALTIME, &currTime);
 
     while (connect(SERVER_SOCKET, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
         if (errno == ENOENT) {
@@ -45,13 +62,21 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
             exit(EXIT_FAILURE);
     }
 
+    SOCKET_PATH = sockname;
+    
     return 0;
 }
 
+/**
+ * Chiude la connessione AF_UNIX associata al socket file sockname. Ritorna 0 in caso di successo, -1 in caso di
+ * fallimento, errno viene settato opportunamente.
+ **/
 int closeConnection(const char* sockname) {
-    if (strncmp(sa.sun_path, sockname, 100) == 0)  {
+    if (SOCKET_PATH != NULL && strncmp(SOCKET_PATH, sockname, strlen(SOCKET_PATH) + 1) == 0)  {
         close(SERVER_SOCKET);
+        return 0;
     }
+    return -1;
 }
 
 /**
@@ -65,12 +90,11 @@ int closeConnection(const char* sockname) {
  * descritta di seguito.
  * Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene settato opportunamente. 
  **/
-
 int openFile(const char* pathname, int flags) {
 
     printf("Invio una open di %s\n", pathname);
 
-    char absolutePath[1024];
+    char absolutePath[PATH_SIZE];
     realpath(pathname, absolutePath);
 
     int id = OPEN_FILE;
@@ -153,11 +177,11 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     
     printf("Invio una read di %s\n", pathname);
 
-    // char absolutePath[1000];
-    // realpath(pathname, absolutePath);
+    char absolutePath[PATH_SIZE];
+    realpath(pathname, absolutePath);
 
     int id = READ_FILE;
-    int pathLength = strlen(pathname) + 1;
+    int pathLength = strlen(absolutePath) + 1;
     int payloadLength = pathLength;
 
     // Header
@@ -167,8 +191,7 @@ int readFile(const char* pathname, void** buf, size_t* size) {
 
     // Payload
     char *payload = malloc(payloadLength);
-    // memcpy(payload, &pathLength, sizeof(int));
-    memcpy(payload, pathname, pathLength);
+    memcpy(payload, absolutePath, pathLength);
 
     write(SERVER_SOCKET, header, sizeof(int) * 2);
     write(SERVER_SOCKET, payload, payloadLength);
@@ -182,16 +205,82 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     char *payloadResponse = malloc(sizeof(packetSize));
     read(SERVER_SOCKET, payloadResponse, packetSize);
 
-    printf("Client got : %s\n\n", payloadResponse);
+    if (*buf != NULL || size != NULL) {
+        *size = packetSize;
+        *buf = payloadResponse;
+    } else {
+        free(payloadResponse);
+    }
 
+    free(headerResponse);
+    free(payload);
+    free(header);
+
+    return 0;
+}
+
+/**
+ * Richiede al server la lettura di ‘N’ files qualsiasi da memorizzare nella directory ‘dirname’ lato client. Se il server
+ * ha meno di ‘N’ file disponibili, li invia tutti. Se N<=0 la richiesta al server è quella di leggere tutti i file
+ * memorizzati al suo interno. Ritorna un valore maggiore o uguale a 0 in caso di successo (cioè ritorna il n. di file
+ * effettivamente letti), -1 in caso di fallimento, errno viene settato opportunamente.
+ **/
+int readNFiles(int N, const char* dirname) {
+
+    int id = READ_N_FILES;
+    int payloadLength = sizeof(int);
+
+    // Header
+    char *header = malloc(sizeof(int) * 2);
+    memcpy(header, &id, sizeof(int));
+    memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
+
+    // Payload
+    char *payload = malloc(payloadLength);
+    memcpy(payload, &N, sizeof(int));
+
+    write(SERVER_SOCKET, header, sizeof(int) * 2);
+    write(SERVER_SOCKET, payload, payloadLength);        
+
+    // Response Header
+    char *headerResponse = malloc(sizeof(int));
+
+    read(SERVER_SOCKET, headerResponse,  sizeof(int));
+    int packetSize = *((int *) headerResponse);
+
+    // Response Payload
+    char *payloadResponse = malloc(sizeof(packetSize));
+
+    read(SERVER_SOCKET, payloadResponse, packetSize);    
+
+    char *currentPosition = payloadResponse;
+    while (currentPosition != NULL) {
+
+        int pathLength = *((int *) currentPosition);
+        currentPosition += sizeof(int);
+        
+        char *path = malloc(sizeof(char) * pathLength);
+        strncpy(path, currentPosition, pathLength);
+        currentPosition += pathLength;
+
+        int contentLength = *((int *) currentPosition);
+        currentPosition += sizeof(int);
+        
+        char *content = malloc(sizeof(char) * contentLength);
+        strncpy(content, currentPosition, contentLength);
+        currentPosition += contentLength;
+
+        printf("File Path: %s\n", path);
+        printf("File Content: %s\n", content);
+
+        free(content);
+        free(path);
+    }
+    
     free(payloadResponse);
     free(headerResponse);
     free(payload);
     free(header);
-}
-
-int readNFiles(int N, const char* dirname) {
-
 }
 
 /**
@@ -209,9 +298,8 @@ int writeFile(const char* pathname, const char* dirname) {
     }
 
     printf("Invio una write di %s\n", pathname);
-
     
-    char absolutePath[1024];
+    char absolutePath[PATH_SIZE];
     realpath(pathname, absolutePath);
 
     fseek(file, 0, SEEK_END);
@@ -283,11 +371,9 @@ int lockFile(const char* pathname);
 int closeFile(const char* pathname) {
 
     printf("Invio una close di %s\n", pathname);
-
     
     char absolutePath[1024];
-    realpath(pathname, absolutePath);
-    
+    realpath(pathname, absolutePath);    
 
     int id = CLOSE_FILE;
     int pathLength = strlen(absolutePath) + 1;
@@ -352,3 +438,5 @@ int removeFile(const char* pathname) {
 
     return 0;
 }
+
+
