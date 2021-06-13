@@ -12,7 +12,7 @@
 
 #include "../include/client_network.h"
 #include "../include/list_utils.h"
-#include "../include/utils.h"
+#include "../../core/include/utils.h"
 
 // Metodi per leggere gli argomenti passati da linea di comando
 static void read_arguments(int argc, char *argv[]);
@@ -88,14 +88,26 @@ void read_arguments(int argc, char *argv[]) {
 
 void addArgument(char c, char *arg) {
 
-    Argument *newArg = (Argument *) malloc(sizeof(Argument));
-    
-    char *command = (char *) malloc(sizeof(char));
+    Argument *newArg;
+    if ((newArg = (Argument *) malloc(sizeof(Argument))) == NULL) {
+        perror("ERRORE: impossibile allocare memoria per Argument.");
+        exit(errno);
+    }
+
+    char *command;
+    if ((command = (char *) malloc(sizeof(char))) == NULL) {
+        perror("ERRORE: impossibile allocare memoria per il comando.");
+        exit(errno);
+    }
+
     *command = c;
     
     char *argument = NULL;
     if (arg != NULL) {
-        argument = (char *) malloc(sizeof(char) * strlen(arg) + 1);
+        if ((argument = (char *) malloc(sizeof(char) * strlen(arg) + 1)) == NULL) {
+            perror("ERRORE: impossibile allocare memoria per l'argomento.");
+            exit(errno);
+        }
         strncpy(argument, arg, strlen(arg) + 1);
     } 
 
@@ -110,6 +122,11 @@ void execute_arguments() {
     Argument *arg;
     char command;
 
+    command = 'h';
+    if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        handle_help_commands();
+        remove_value(&argumentList, arg);
+    }
 
     command = 'p';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
@@ -130,7 +147,10 @@ void execute_arguments() {
         if (get_value(argumentList, &command_r) != NULL || get_value(argumentList, &command_R) != NULL ) {
             char *directory = arg->argument;
 
-            DIRNAME = (char *) malloc(sizeof(char) * strlen(directory) + 1);
+            if ((DIRNAME = (char *) malloc(sizeof(char) * strlen(directory) + 1)) == NULL) {
+                perror("ERRORE: impossibile allocare memoria per DIRNAME.");
+                exit(errno);
+            }
             strncpy(DIRNAME, directory, strlen(directory) + 1);
 
             remove_value(&argumentList, arg);
@@ -145,35 +165,38 @@ void execute_arguments() {
         printf("Connessione al socket: \"%s\".\n", arg->argument);
         handle_socket_connection(arg->argument);
         remove_value(&argumentList, arg);
+    } else {
+        fprintf(stderr, "Nessuna connessione stabilita! Digita -h per vedere i comandi disponibili.\n");
+        return;
     }
 
     for (Node *curr = argumentList; curr != NULL; curr = curr->next) {
         Argument *arg = (Argument *) curr->value;
-        switch (*(arg->command)) {
-            case 'h':
-                handle_help_commands();
-                break;
+        char command = *(arg->command);
+        char *argument = arg->argument;
+        switch (command) {
             case 'w':
-                handle_write_dir(optarg);
+                handle_write_dir(argument);
                 break;
             case 'W':
-                handle_write_files(optarg);
+                handle_write_files(argument);
                 break;
             case 'r':
-                handle_read_files(optarg);
+                handle_read_files(argument);
                 break;
             case 'R':
-                handle_read_n_files(optarg);
+                handle_read_n_files(argument);
                 break;
             case 'c':
-                handle_remove_file(optarg);
+                handle_remove_file(argument);
                 break;
             default:
                 break;
         }
     }
-}
 
+    closeConnection(SOCKET_PATH);  
+}
 
 void free_arguments() {
     
@@ -192,8 +215,15 @@ void free_arguments() {
         // Cancello il nodo
         free(temp);
     }
-}
 
+    if (DIRNAME != NULL) {
+        free(DIRNAME);
+    }
+
+    if (SOCKET_PATH != NULL) {
+        free(SOCKET_PATH);
+    }
+}
 
 void handle_socket_connection(char *socketName) {
     struct timespec abstime;
@@ -212,7 +242,7 @@ void handle_write_dir(char *optarg) {
 
         int length = strlen(token) + 1;
 
-        argument[size] = malloc(length);
+        argument[size] = (char *) malloc(length);
         strncpy(argument[size], token, length);
 
         token = strtok(NULL, ",");
@@ -265,14 +295,13 @@ void handle_read_files(char *optarg) {
     while (token) {
 
         openFile(token, NO_ARG);
-
         if (DIRNAME == NULL) { 
             readFile(token, NULL, NULL);
         } else {
             size_t bufferSize;
-            char *buffer = NULL;
+            void *buffer = NULL;
             readFile(token, &buffer, &bufferSize);
-            write_file_directory(DIRNAME, token, buffer);
+            write_file_directory(DIRNAME, token, (char *) buffer);
         }
 
         closeFile(token);
@@ -301,7 +330,6 @@ void handle_remove_file(char *optarg) {
 
         if (openFile(token, O_CREATE) == -1) openFile(token, NO_ARG);
         removeFile(token);
-        // closeFile(token);
 
         token = strtok(NULL, ",");
     }
@@ -361,7 +389,6 @@ void read_directories(char *dirName, int n) {
     }
 
     while ((errno = 0, file = readdir(directory)) != NULL && (n == 0 || cont < n)) {
-        
         if (strcmp("..", file->d_name) == 0 || strcmp(".", file->d_name) == 0) {
             continue;
         }
@@ -385,25 +412,16 @@ void read_directories(char *dirName, int n) {
 
 void write_file_directory(char *dirName, char *fileName, char *buffer) {
 
-    DIR *directory = NULL;
-    if ((directory = opendir(dirName)) == NULL) {
-        perror("ERRORE: apertura della directory");
-        exit(errno);
-    }
+    strncat(dirName, fileName, strlen(dirName) + 1);
 
     FILE *file = NULL;
-    if ((file = fopen(fileName, "w")) == NULL) {
+    if ((file = fopen(dirName, "w")) == NULL) {
         perror("ERRORE: impossibile aprire il file");
-        return -1;
+        exit(errno);
     } 
 
-    if (fprintf(file, buffer) < 0) {
+    if (fprintf(file, "%s", buffer) < 0) {
         perror("ERRORE: impossibile scrivere il file");
-        return EXIT_FAILURE;
-    }
-
-    if ((closedir(directory) == -1)) {
-        perror("ERRORE: chiusura della directory");
-        exit(EXIT_FAILURE);
+        exit(errno);
     }
 }

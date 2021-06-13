@@ -1,7 +1,6 @@
 #ifndef CLIENT_NETWORK_H
 #define CLIENT_NETWORK_H
 
-
 #define NO_ARG 0x00
 #define O_LOCK 0x01
 #define O_CREATE 0x02
@@ -16,6 +15,7 @@
 #define CLOSE_FILE 6
 #define REMOVE_FILE 7
 
+char* SOCKET_PATH;
 
 int openConnection(const char* sockname, int msec, const struct timespec abstime);
 

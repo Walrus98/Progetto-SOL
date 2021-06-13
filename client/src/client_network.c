@@ -19,7 +19,6 @@
 #define PATH_SIZE 1024
 
 static int SERVER_SOCKET;
-static char* SOCKET_PATH;
 
 /**
  * Viene aperta una connessione AF_UNIX al socket file sockname. Se il server non accetta immediatamente la
@@ -62,7 +61,11 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
             exit(EXIT_FAILURE);
     }
 
-    // strncpy(SOCKET_PATH, sockname, strlen(sockname));
+    if ((SOCKET_PATH = (char *) malloc(strlen(sockname) + 1)) == NULL) {
+        perror("ERRORE: impossibile allocare memoria per SOCKET_PATH.");
+        exit(errno);
+    }
+    strncpy(SOCKET_PATH, sockname, strlen(sockname) + 1);
     
     return 0;
 }
@@ -205,7 +208,7 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     char *payloadResponse = malloc(sizeof(packetSize));
     read(SERVER_SOCKET, payloadResponse, packetSize);
 
-    if (*buf != NULL || size != NULL) {
+    if (buf != NULL || size != NULL) {
         *size = packetSize;
         *buf = payloadResponse;
     } else {
@@ -261,8 +264,7 @@ int readNFiles(int N, const char* dirname) {
     for (int i = 0; i < filesAmount; i++) {
 
         int pathLength = *((int *) currentPosition);
-        currentPosition += sizeof(int);
-        
+        currentPosition += sizeof(int); 
 
         char *path = malloc(sizeof(char) * pathLength);
         strncpy(path, currentPosition, pathLength);
@@ -274,8 +276,6 @@ int readNFiles(int N, const char* dirname) {
         char *content = malloc(sizeof(char) * contentLength);
         strncpy(content, currentPosition, contentLength);
         currentPosition += contentLength;
-
-        
 
         printf("%d\n", pathLength);
         printf("%d\n", contentLength);
@@ -291,6 +291,8 @@ int readNFiles(int N, const char* dirname) {
     free(headerResponse);
     free(payload);
     free(header);
+
+    return 0;
 }
 
 /**
@@ -316,7 +318,7 @@ int writeFile(const char* pathname, const char* dirname) {
     int textLength = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char *content = malloc(textLength);
+    char *content = (char *) malloc(textLength);
     fread(content, 1, textLength, file); 
 
     int id = WRITE_FILE;
@@ -328,7 +330,7 @@ int writeFile(const char* pathname, const char* dirname) {
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
-    // payload
+    // Payload
     char *payload = malloc(payloadLength);
     char *currentPosition = payload;
 
@@ -358,6 +360,8 @@ int writeFile(const char* pathname, const char* dirname) {
         perror("ERRORE: chiusura del file");
         exit(EXIT_FAILURE);
     }
+
+    return 0;
 }
 
 /**
@@ -368,6 +372,36 @@ int writeFile(const char* pathname, const char* dirname) {
  **/
 int appendToFile(const char* pathname, void* buf, size_t size, const char* dirname) {
 
+    int id = APPEND_TO_FILE;
+    int pathLength = strlen(pathname) + 1;
+    int contentLength = strlen(buf) + 1;
+    int payloadLength = sizeof(int) + pathLength + sizeof(int) + contentLength;
+
+    // Header
+    char *header = malloc(sizeof(int) * 2);
+    memcpy(header, &id, sizeof(int));
+    memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
+
+    // Payload
+    char *payload = malloc(payloadLength);
+    char *currentPosition = payload;
+
+    memcpy(currentPosition, &pathLength, sizeof(int));
+    currentPosition += sizeof(int);
+    memcpy(currentPosition, pathname, pathLength);
+    currentPosition += pathLength;
+    memcpy(currentPosition, &contentLength, pathLength);
+    currentPosition += sizeof(int);
+    memcpy(currentPosition, buf, contentLength);
+
+    write(SERVER_SOCKET, header, sizeof(int) * 2);
+    write(SERVER_SOCKET, payload, payloadLength);
+
+    // Response
+    int response;
+    read(SERVER_SOCKET, &response, sizeof(int));
+
+    return response == 1 ? 0 : -1;
 }
 
 int lockFile(const char* pathname);
