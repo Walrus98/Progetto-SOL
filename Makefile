@@ -1,3 +1,4 @@
+ARGUMENT	= -f mysock -W test/ciao
 
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g
@@ -15,16 +16,15 @@ TARGETS_SERVER	= server.o server_config.o utils.o server_storage.o server_cache_
 .SUFFIXES: .c .h .o
 
 all: build-client build-server clear
-
-build-client: $(TARGETS_CLIENT)
 	-rm mysock
-	$(CC) $(CFLAGS) build/obj/client/*.o build/obj/core/*.o -o build/client
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
+build-client: $(TARGETS_CLIENT)
+	$(CC) $(CFLAGS) build/obj/client/*.o build/obj/core/*.o -o build/client
+	
 build-server: $(TARGETS_SERVER)
 	-rm mysock
 	$(CC) $(CFLAGS) -pthread build/obj/server/*.o build/obj/core/*.o -o build/server
-	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
 clear:
 	rm -R build/obj/client/*.o
@@ -33,7 +33,7 @@ clear:
 
 client: build-client
 	clear
-	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/client -f mysock
+	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/client $(ARGUMENT)
 
 server: build-server
 	clear

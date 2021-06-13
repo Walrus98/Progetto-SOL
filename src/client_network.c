@@ -318,12 +318,12 @@ int writeFile(const char* pathname, const char* dirname) {
     int textLength = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    char *content = (char *) malloc(sizeof(char) * textLength);
+    char *content = (char *) malloc(textLength);
     fread(content, 1, textLength, file); 
 
     int id = WRITE_FILE;
     int pathLength = strlen(absolutePath) + 1;
-    int contentLength = textLength;
+    int contentLength = strlen(content) + 1;
     int payloadLength = sizeof(int) + pathLength + sizeof(int) + contentLength;
 
     char *header = malloc(sizeof(int) * 2);
@@ -338,7 +338,7 @@ int writeFile(const char* pathname, const char* dirname) {
     currentPosition += sizeof(int);
     memcpy(currentPosition, absolutePath, pathLength);
     currentPosition += pathLength;
-    memcpy(currentPosition, &contentLength, sizeof(int));
+    memcpy(currentPosition, &contentLength, pathLength);
     currentPosition += sizeof(int);
     memcpy(currentPosition, content, contentLength);
 
@@ -453,11 +453,8 @@ int closeFile(const char* pathname) {
  **/
 int removeFile(const char* pathname) {
 
-    char absolutePath[1024];
-    realpath(pathname, absolutePath);    
-
     int id = REMOVE_FILE;
-    int pathLength = strlen(absolutePath) + 1;
+    int pathLength = strlen(pathname) + 1;
     int payloadLength = pathLength;
 
     // Header
@@ -468,7 +465,7 @@ int removeFile(const char* pathname) {
     // payload
     char *payload = malloc(payloadLength);
     memcpy(payload, &pathLength, sizeof(int));
-    memcpy(payload + sizeof(int), absolutePath, pathLength);
+    memcpy(payload + sizeof(int), pathname, pathLength);
 
     write(SERVER_SOCKET, header, sizeof(int) * 2);
     write(SERVER_SOCKET, payload, payloadLength);
