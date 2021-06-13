@@ -14,15 +14,11 @@
 #include "../include/list_utils.h"
 #include "../include/utils.h"
 
-typedef struct Argument {
-    char *command;
-    char *argument;
-} Argument;
-
 // Metodi per leggere gli argomenti passati da linea di comando
 static void read_arguments(int argc, char *argv[]);
 static void addArgument(char c, char *arg);
 static void execute_arguments();
+static void free_arguments();
 
 // Metodi per gestire le richieste dei client
 static void handle_socket_connection(char *socketName);
@@ -31,12 +27,20 @@ static void handle_write_files(char *optarg);
 static void handle_read_files(char *optarg);
 static void handle_read_n_files(char *optarg);
 static void handle_remove_file(char *optarg);
+static void handle_help_commands();
 
 // Metodi aggiuntivi 
 static void check_attribute(char *path, int n);
 static void read_directories(char *dirName, int n);
+static void write_file_directory(char *dirName, char *fileName, char *buffer);
 
+// Lista di Argomenti
 static Node *argumentList;
+
+typedef struct Argument {
+    char *command;
+    char *argument;
+} Argument;
 
 static int fun_compare(void *a, void *b) {
     Argument *arg = (Argument *) a;
@@ -45,6 +49,8 @@ static int fun_compare(void *a, void *b) {
     return *(arg->command) == command;
 }
 
+static char *DIRNAME = NULL;
+
 int main(int argc, char *argv[]) {
 
     if (argc == 1) {
@@ -52,10 +58,13 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    printf("Avvio del client in corso...\n\n");
+
     create_list(&argumentList, fun_compare);
 
     read_arguments(argc, argv);
     execute_arguments();
+    free_arguments();
 
     return EXIT_SUCCESS;
 }
@@ -63,31 +72,8 @@ int main(int argc, char *argv[]) {
 void read_arguments(int argc, char *argv[]) {
  
     int opt;
-    while ((opt = getopt(argc, argv, ": f: w: W: r: R: c: h")) != -1) {
+    while ((opt = getopt(argc, argv, ": f: w: W: r: R: d: c: h p")) != -1) {
         switch (opt) {
-            // case 'h':
-            //     printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n");
-            //     printf("-w dirname : invia al server i file nella cartella 'dirname'\n");
-            //     break;
-            // case 'f':
-            //     addArgument('f');
-            //     handle_socket_connection(optarg);
-            //     break;
-            // case 'w':
-            //     handle_write_dir(optarg);
-            //     break;
-            // case 'W':
-            //     handle_write_files(optarg);
-            //     break;
-            // case 'r':
-            //     handle_read_files(optarg);
-            //     break;
-            // case 'R':
-            //     handle_read_n_files(optarg);
-            //     break;
-            // case 'c':
-            //     handle_remove_file(optarg);
-            //     break;
             case ':':
                 printf("l'opzione '-%c' richiede un argomento\n", optopt);
                 break;
@@ -101,12 +87,17 @@ void read_arguments(int argc, char *argv[]) {
 }
 
 void addArgument(char c, char *arg) {
-    Argument *newArg = (Argument *) malloc(sizeof(Argument));
-    char *command = (char *) malloc(sizeof(char));
-    char *argument = (char *) malloc(sizeof(char) * strlen(arg) + 1);
 
+    Argument *newArg = (Argument *) malloc(sizeof(Argument));
+    
+    char *command = (char *) malloc(sizeof(char));
     *command = c;
-    strncpy(argument, arg, strlen(arg) + 1);
+    
+    char *argument = NULL;
+    if (arg != NULL) {
+        argument = (char *) malloc(sizeof(char) * strlen(arg) + 1);
+        strncpy(argument, arg, strlen(arg) + 1);
+    } 
 
     newArg->command = command;
     newArg->argument = argument;
@@ -114,41 +105,92 @@ void addArgument(char c, char *arg) {
     add_tail(&argumentList, newArg);
 }
 
-// char *get_arguments(char c) {
-//     Node *currentList;
-//     for (currentList = argumentList; currentList != NULL; currentList = currentList->next) {
-//         Argument *argument = (Argument *) currentList->value;
-//         if (argument->command == c) {
-//             return argument->argument;
-//         }
-//     }
-//     return 0;
-// }
-
 void execute_arguments() {
-
-    // char prova = 'f';
-    // Argument *arg = (Argument *) get_value(argumentList, &prova);
-
-    // printf("%c\n", *(arg->command));
-    // printf("%s\n", arg->argument);
 
     Argument *arg;
     char command;
 
+
     command = 'p';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
-
+        DEBUG_ENABLE = 1;
+        DEBUG("Modalità di DEBUG attivata.\n");
+        remove_value(&argumentList, arg);
     }
 
     command = 't';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        remove_value(&argumentList, arg);
     }
     
+    command = 'd';
+    if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        char command_r = 'r';
+        char command_R = 'R';
+        if (get_value(argumentList, &command_r) != NULL || get_value(argumentList, &command_R) != NULL ) {
+            char *directory = arg->argument;
+
+            DIRNAME = (char *) malloc(sizeof(char) * strlen(directory) + 1);
+            strncpy(DIRNAME, directory, strlen(directory) + 1);
+
+            remove_value(&argumentList, arg);
+        } else {
+            fprintf(stderr, "Impossibile eseguire il comando -d senza eseguire anche un comando -R o -r!\n");
+            return;
+        }
+    }
+     
     command = 'f';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        printf("Connessione al socket: \"%s\".\n", arg->argument);
         handle_socket_connection(arg->argument);
         remove_value(&argumentList, arg);
+    }
+
+    for (Node *curr = argumentList; curr != NULL; curr = curr->next) {
+        Argument *arg = (Argument *) curr->value;
+        switch (*(arg->command)) {
+            case 'h':
+                handle_help_commands();
+                break;
+            case 'w':
+                handle_write_dir(optarg);
+                break;
+            case 'W':
+                handle_write_files(optarg);
+                break;
+            case 'r':
+                handle_read_files(optarg);
+                break;
+            case 'R':
+                handle_read_n_files(optarg);
+                break;
+            case 'c':
+                handle_remove_file(optarg);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+
+void free_arguments() {
+    
+    for (Node *curr = argumentList; curr != NULL;) {
+        Argument *arg = (Argument *) curr->value;
+
+        Node *temp = curr;
+
+        // Cancello il valore della lista
+        free(arg->command);
+        free(arg->argument);
+        free(arg);
+
+        curr = curr->next;
+        
+        // Cancello il nodo
+        free(temp);
     }
 }
 
@@ -223,7 +265,16 @@ void handle_read_files(char *optarg) {
     while (token) {
 
         openFile(token, NO_ARG);
-        readFile(token, NULL, NULL);
+
+        if (DIRNAME == NULL) { 
+            readFile(token, NULL, NULL);
+        } else {
+            size_t bufferSize;
+            char *buffer = NULL;
+            readFile(token, &buffer, &bufferSize);
+            write_file_directory(DIRNAME, token, buffer);
+        }
+
         closeFile(token);
 
         token = strtok(NULL, ",");
@@ -254,6 +305,11 @@ void handle_remove_file(char *optarg) {
 
         token = strtok(NULL, ",");
     }
+}
+
+void handle_help_commands() {
+    printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n");
+    printf("-w dirname : invia al server i file nella cartella 'dirname'\n");
 }
 
 // ====================
@@ -325,4 +381,29 @@ void read_directories(char *dirName, int n) {
         perror("chdir"); 
         exit(EXIT_FAILURE);
     }    
+}
+
+void write_file_directory(char *dirName, char *fileName, char *buffer) {
+
+    DIR *directory = NULL;
+    if ((directory = opendir(dirName)) == NULL) {
+        perror("ERRORE: apertura della directory");
+        exit(errno);
+    }
+
+    FILE *file = NULL;
+    if ((file = fopen(fileName, "w")) == NULL) {
+        perror("ERRORE: impossibile aprire il file");
+        return -1;
+    } 
+
+    if (fprintf(file, buffer) < 0) {
+        perror("ERRORE: impossibile scrivere il file");
+        return EXIT_FAILURE;
+    }
+
+    if ((closedir(directory) == -1)) {
+        perror("ERRORE: chiusura della directory");
+        exit(EXIT_FAILURE);
+    }
 }
