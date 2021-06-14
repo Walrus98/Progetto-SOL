@@ -52,7 +52,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = open_file(fileDescriptor, filePath, flagCreate, flagLock);
 
-            write(fileDescriptor, &response, 4);
+            write(fileDescriptor, &response, sizeof(int));
 
             // switch (response) {
             //     case 1:
@@ -77,27 +77,26 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
         case READ_FILE:
             ;
-            // fileLength = *((int *) payload);
             filePath = payload;
 
             contentLength = 0;
             char *content = read_file(fileDescriptor, filePath, &contentLength);
 
+            // Se l'utente ha eseguito la open sul file
+            if (content != NULL) {
+                char *buffer = malloc(sizeof(int) + contentLength);
+
+                memcpy(buffer, &contentLength, sizeof(int));
+                memcpy(buffer + sizeof(int), content, contentLength);
+
+                write(fileDescriptor, buffer, (sizeof(int) + contentLength));
+
+                free(content);
+                free(buffer);
             // Se l'utente non ha eseguito la open sul file
-            if (content == NULL) {
-                content = (char *) malloc(sizeof(char) * 100);
-                strncpy(content, "Devi prima eseguire la open su quel file!", 100);
-                contentLength = 100;
+            } else {
+                write(fileDescriptor, &contentLength, sizeof(int));
             }
-            char *buffer = malloc(sizeof(int) + contentLength);
-
-            memcpy(buffer, &contentLength, sizeof(int));
-            memcpy(buffer + sizeof(int), content, contentLength);
-
-            write(fileDescriptor, buffer, (sizeof(int) + contentLength));
-
-            free(content);
-            free(buffer);
 
             break;
 
@@ -127,11 +126,12 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = write_file(fileDescriptor, filePath, content);
 
-            if (response == 1) {
-                write(fileDescriptor, "Write eseguita con successo!", 100); 
-            } else {
-                write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100); 
-            }
+            write(fileDescriptor, &response, sizeof(int));
+            // if (response == 1) {
+            //     write(fileDescriptor, "Write eseguita con successo!", 100); 
+            // } else {
+            //     write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100); 
+            // }
 
             break;
 
@@ -145,11 +145,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = close_file(fileDescriptor, filePath);
 
-            if (response == 1) {
-                write(fileDescriptor, "Close eseguita con successo!", 100); 
-            } else {
-                write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100); 
-            }
+            write(fileDescriptor, &response, sizeof(int));
             
             break;
         

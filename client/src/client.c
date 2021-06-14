@@ -37,11 +37,15 @@ static void write_file_directory(char *dirName, char *fileName, char *buffer);
 // Lista di Argomenti
 static Node *argumentList;
 
+// Struttura utilizzata all'interno della lista
 typedef struct Argument {
+    // Il carattere del comando (es. -f, -d, etc..)
     char *command;
+    // Il contenuto del comando
     char *argument;
 } Argument;
 
+// Funzione per confrontare gli elementi all'interno della lista
 static int fun_compare(void *a, void *b) {
     Argument *arg = (Argument *) a;
     char command = *((char *) b);
@@ -49,7 +53,9 @@ static int fun_compare(void *a, void *b) {
     return *(arg->command) == command;
 }
 
+// Tempo in millisecondi utilizzato dal comando -t
 static int TIME;
+// Direcotry utilizzata dal comando -d
 static char *DIRNAME = NULL;
 
 int main(int argc, char *argv[]) {
@@ -59,27 +65,36 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    printf("Avvio del client in corso...\n\n");
+    printf("\nAvvio del client in corso...\n\n");
 
+    // Inizializzo la lista a NULL e assegno alla lista la funzione di compare definita sopra
     create_list(&argumentList, fun_compare);
 
+    // Leggo tutti gli argomenti che l'utente ha avviato e li inserisco all'interno della lista
     read_arguments(argc, argv);
+    // Eseguo i comandi contenuti all'interno della lista
     execute_arguments();
+    // Libero dalla memoria principale gli argomenti nella lista
     free_arguments();
 
+    printf("\n");
+    
     return EXIT_SUCCESS;
 }
 
+// Leggo tutti gli argomenit che l'utente ha inserito all'avvio del programma e li inserisco nella lista
 void read_arguments(int argc, char *argv[]) {
  
     int opt;
     while ((opt = getopt(argc, argv, ": f: w: W: r: R: d: c: h p")) != -1) {
         switch (opt) {
+            // Se l'utente mi massa un comando senza argomento che in realtà lo richiede
             case ':':
-                printf("l'opzione '-%c' richiede un argomento\n", optopt);
+                printf("L'opzione '-%c' richiede un argomento\n", optopt);
                 break;
+            // Se l'utente mi passa un comando inesistente
             case '?': 
-                printf("l'opzione '-%c' non e' gestita\n", optopt);
+                printf("L'opzione '-%c' non è gestita. Digita -h per vedere i comandi disponibili.\n", optopt);
                 break;
             default:
                 addArgument(opt, optarg);
@@ -87,91 +102,116 @@ void read_arguments(int argc, char *argv[]) {
     }
 }
 
+// Inserisco gli argomenti all'interno della lista
 void addArgument(char c, char *arg) {
 
+    // Alloco nello heap la struct di Argument
     Argument *newArg;
     if ((newArg = (Argument *) malloc(sizeof(Argument))) == NULL) {
-        perror("ERRORE: impossibile allocare memoria per Argument.");
-        exit(errno);
+        perror("ERRORE: Impossibile allocare memoria per Argument.");
+        return;
     }
 
+    // Alloco nello heap il comando passato per parametro
     char *command;
     if ((command = (char *) malloc(sizeof(char))) == NULL) {
-        perror("ERRORE: impossibile allocare memoria per il comando.");
-        exit(errno);
+        perror("ERRORE: Impossibile allocare memoria per il comando.");
+        return;
     }
 
     *command = c;
     
+    // Alloco nello heap il l'argomento passato per parametro, se presente (es. -h non possiede l'argomento)
     char *argument = NULL;
     if (arg != NULL) {
         if ((argument = (char *) malloc(sizeof(char) * strlen(arg) + 1)) == NULL) {
-            perror("ERRORE: impossibile allocare memoria per l'argomento.");
-            exit(errno);
+            perror("ERRORE: Impossibile allocare memoria per l'argomento.");
+            return;
         }
         strncpy(argument, arg, strlen(arg) + 1);
     } 
 
+    // Assegno alla struct creata l'argomento e il comando
     newArg->command = command;
     newArg->argument = argument;
 
+    // Aggiungo la struct all'interno della lista
     add_tail(&argumentList, newArg);
 }
 
+// Eseguo gli argomenti presenti all'interno della lista
 void execute_arguments() {
 
     Argument *arg;
     char command;
 
+    // Se la lista di argomenti contiene il comando -h
     command = 'h';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        // Eseguo il comando richiesto
         handle_help_commands();
+        // Rimuovo il comando dalla lista
         remove_value(&argumentList, arg);
     }
 
+    // Se la lista di argomenti contiene il comando -p
     command = 'p';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        // Abilito la modalità di debug
         DEBUG_ENABLE = 1;
-        DEBUG("Modalità di DEBUG attivata.\n");
+        DEBUG(("modalità di DEBUG attivata.\n"));
+        // Rimuovo il comando dalla lista
         remove_value(&argumentList, arg);
     }
 
+    // Se la lista di argomenti contiene il comando -t
     command = 't';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        // Prendo l'argomento che l'utente ha inserito con il comando -t
         char *argument = arg->argument;
+        // Controllo se l'argomento è un numero
         long value;
         if (isNumber(argument, &value) == 1) {
+            // Se è un numero, allora assegno a time il valore richiesto dall'utente
             TIME = value; 
+            // Rimuovo il comando dalla lista
             remove_value(&argumentList, arg);
         } else {
-            fprintf(stderr, "L'argomento passato per parametro deve essere un numero! Digita -h per vedere i comandi disponibili.\n");
+            // Altrimenti restituisco un messaggio di errore
+            fprintf(stderr, "ERRORE: L'argomento passato per parametro deve essere un numero! Digita -h per vedere i comandi disponibili.\n");
             return;
         }
     }
     
+    // Se la lista di argomenti contiene il comando -d
     command = 'd';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
+        // Controllo se nella lista è presente anche il comando -r o -R
         char command_r = 'r';
         char command_R = 'R';
+        // Se è presente almeno uno dei due
         if (get_value(argumentList, &command_r) != NULL || get_value(argumentList, &command_R) != NULL ) {
+            // Prendo l'argomento che l'utente ha inserito con il comando -d
             char *directory = arg->argument;
 
+            // Assegno a DIRNAME la directory che l'utente ha passato
             if ((DIRNAME = (char *) malloc(sizeof(char) * strlen(directory) + 1)) == NULL) {
-                perror("ERRORE: impossibile allocare memoria per DIRNAME.");
-                exit(errno);
+                perror("ERRORE: Impossibile allocare memoria per DIRNAME.");
+                return;
             }
             strncpy(DIRNAME, directory, strlen(directory) + 1);
 
+            // Rimuovo dalla lista degli argomenti -d
             remove_value(&argumentList, arg);
         } else {
-            fprintf(stderr, "Impossibile eseguire il comando -d senza eseguire anche un comando -R o -r!\n");
+            fprintf(stderr, "ERRORE: impossibile eseguire il comando -d senza eseguire anche un comando -R o -r!\n");
             return;
         }
     }
      
     command = 'f';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
-        printf("Connessione al socket: \"%s\".\n", arg->argument);
+        printf("CLIENT: Connessione al socket: \"%s\".\n", arg->argument);
         handle_socket_connection(arg->argument);
         remove_value(&argumentList, arg);
     } else {
@@ -236,8 +276,8 @@ void free_arguments() {
 
 void handle_socket_connection(char *socketName) {
     struct timespec abstime;
-    
-    openConnection(socketName, 1000, abstime);
+
+    openConnection(socketName, TIME, abstime);
 }
 
 void handle_write_dir(char *optarg) {
@@ -272,8 +312,8 @@ void handle_write_dir(char *optarg) {
         // Controllo se quello che mi è stato passato dopo la ',' sia effettivamente un numero
         long nFiles;
         if (isNumber(argument[1], &nFiles) == 0) {
-            fprintf(stderr, "L'argomento passato per parametro deve essere un numero! Digita -h per vedere i comandi disponibili.\n");
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "ERRORE: l'argomento passato per parametro deve essere un numero! Digita -h per vedere i comandi disponibili.\n");
+            return;
         }
 
         // Se il numero passato corrisponde a 0, allora devo leggere tutti i file presenti nella direcotry
@@ -290,10 +330,19 @@ void handle_write_files(char *optarg) {
 
     char *token = strtok(optarg, ","); 
     while (token) {
-
-        if (openFile(token, O_CREATE) == -1) openFile(token, NO_ARG);
-        writeFile(token, NULL);
-        closeFile(token);
+        
+        if (openFile(token, O_CREATE | O_LOCK) == -1) {
+            perror("ERRORE: Richiesta di apertura di un File");
+            return;
+        }
+        if (writeFile(token, NULL) == -1) {
+            perror("ERRORE: Richiesta di scrittura di un File");
+            return;
+        }
+        if (closeFile(token) == -1) {
+            perror("ERRORE: Richiesta di chiusura di un File");
+            return;
+        }
 
         token = strtok(NULL, ",");
     }
@@ -307,20 +356,27 @@ void handle_read_files(char *optarg) {
     char *token = strtok(optarg, ",");
     while (token) {
 
-        openFile(token, NO_ARG);
+        if (openFile(token, NO_ARG) == -1) {
+            perror("ERRORE: Richiesta di apertura di un File");
+            return;
+        }
 
         if (readFile(token, &buffer, &bufferSize) == 0) {
-
-            printf("Messaggio ricevuto: %s\n", (char *) buffer);
 
             if (DIRNAME != NULL) {
                 write_file_directory(DIRNAME, token, (char *) buffer);
             }
 
             free(buffer);
+        } else {
+            perror("ERRORE: Richiesta di lettura di un file");
+            return;
         }
 
-        closeFile(token);
+        if (closeFile(token) == -1) {
+            perror("ERRORE: richiesta di chiusura di un file");
+            return;
+        }
 
         token = strtok(NULL, ",");
     }
@@ -343,8 +399,15 @@ void handle_remove_file(char *optarg) {
     char *token = strtok(optarg, ",");
     while (token) {
 
-        if (openFile(token, O_CREATE) == -1) openFile(token, NO_ARG);
-        removeFile(token);
+        if (openFile(token, O_LOCK) == -1) {
+            perror("ERRORE: Richiesta di apertura di un File");
+            return;
+        }
+
+        if (removeFile(token) == -1) {
+            perror("ERRORE: Richiesta di rimozione di un File");
+            return;            
+        }
 
         token = strtok(NULL, ",");
     }
@@ -364,15 +427,24 @@ void check_attribute(char *path, int n) {
     struct stat info;
 
     if (stat(path, &info) == -1) { 
-        fprintf(stderr, "Errore nella lettura del File!\n");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "ERRORE: Impossibile ottenere le informazioni del File!\n");
+        return;
     } 
 
     if (S_ISREG(info.st_mode)) {
-        
-        openFile(path, O_CREATE);
-        writeFile(path, NULL);
-        closeFile(path);
+
+        if (openFile(path, O_CREATE | O_LOCK) == -1) {
+            perror("ERRORE: Richiesta di apertura di un file");
+            return;
+        }
+        if (writeFile(path, NULL) == -1) {
+            perror("ERRORE: Richiesta di scrittura di un file");
+            return;
+        }
+        if (closeFile(path) == -1) {
+            perror("ERRORE: Richiesta di chiusura di un file");
+            return;
+        }
 
         cont++;
     } else if (S_ISDIR(info.st_mode)) {
@@ -384,21 +456,21 @@ void read_directories(char *dirName, int n) {
 
     DIR *directory = NULL;
     if ((directory = opendir(dirName)) == NULL) {
-        perror("ERRORE: apertura della directory");
-        exit(errno);
+        perror("ERRORE: Apertura della directory");
+        return;
     }
 
     struct dirent* file;
 
     char buf[100];
     if (getcwd(buf, 100)==NULL) {
-        perror("ERRORE: impossibile prendere la directory corrente"); 
-        exit(EXIT_FAILURE);
+        perror("ERRORE: Impossibile prendere la directory corrente"); 
+        return;
     }
 
     if (chdir(dirName) == -1) {
-        perror("ERRORE: impossibile spostarsi nella directory"); 
-        exit(EXIT_FAILURE);
+        perror("ERRORE: Impossibile spostarsi nella directory"); 
+        return;
     }
 
     while ((errno = 0, file = readdir(directory)) != NULL && (n == 0 || cont < n)) {
@@ -409,60 +481,50 @@ void read_directories(char *dirName, int n) {
     }
 
     if (errno != 0) {
-        perror("ERRORE: lettura della directory");
-        exit(errno);
+        perror("ERRORE: Lettura della directory");
+        return;
     } else {
         if ((closedir(directory) == -1)) {
-            perror("ERRORE: chiusura della directory");
-            exit(EXIT_FAILURE);
+            perror("ERRORE: Chiusura della directory");
+            return;
         }
     }
     if (chdir(buf) == -1) {
-        perror("ERRORE: impossibile spostarsi nella directory"); 
-        exit(EXIT_FAILURE);
+        perror("ERRORE: Impossibile spostarsi nella directory"); 
+        return;
     }    
 }
 
 void write_file_directory(char *dirName, char *fileName, char *buffer) {
 
-    if (chdir(dirName) == -1) {
-        perror("ERRORE: impossibile spostarsi nella directory");
-        exit(errno);
+    char *token = strtok(fileName, "/");
+    char *test = NULL;
+    while (token) {
+        test = token;
+        token = strtok(NULL, ",");
     }
 
     char directory[STRING_SIZE];
-    if (getcwd(directory, STRING_SIZE) == NULL) {
-        perror("ERRORE: impossibile prendere la directory corrente");
-        exit(errno);
-    }
+    realpath(dirName, directory);
 
-    char *token = strtok(fileName, "/"); 
-    char *fName = NULL;
-    while (token) {
-        fName = token;
-        token = strtok(NULL, "/");
-    }
+    strcat(directory, "/");
+    strcat(directory, test);
 
-    if (fName != NULL) {
-        strcat(directory, "/");
-        strcat(directory, fName);
-    } else {
-        strcpy(directory, fileName);
-    }
+    // printf("DIRECTORY %s\n", directory);
 
     FILE *file = NULL;
     if ((file = fopen(directory, "w")) == NULL) {
-        perror("ERRORE: impossibile aprire il file");
-        exit(errno);
+        perror("ERRORE: Impossibile aprire il file");
+        return;
     } 
 
     if (fprintf(file, "%s", buffer) < 0) {
-        perror("ERRORE: impossibile scrivere il file");
-        exit(errno);
+        perror("ERRORE: Impossibile scrivere il file");
+        return;
     }
 
     if (fclose(file) != 0) {
-        perror("ERRORE: impossibile chiudere il file");
-        exit(errno);
+        perror("ERRORE: Impossibile chiudere il file");
+        return;
     }
 }

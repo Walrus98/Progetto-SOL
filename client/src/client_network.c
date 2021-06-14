@@ -58,12 +58,12 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
             /* sock non esiste */
             // nanosleep(timeWait); 
         } else
-            exit(EXIT_FAILURE);
+            return -1;
     }
 
     if ((SOCKET_PATH = (char *) malloc(strlen(sockname) + 1)) == NULL) {
         perror("ERRORE: impossibile allocare memoria per SOCKET_PATH.");
-        exit(errno);
+        return -1;
     }
     strncpy(SOCKET_PATH, sockname, strlen(sockname) + 1);
     
@@ -95,7 +95,7 @@ int closeConnection(const char* sockname) {
  **/
 int openFile(const char* pathname, int flags) {
 
-    printf("Invio una open di %s\n", pathname);
+    printf("CLIENT: Invio una open di \"%s\".\n", pathname);
 
     char absolutePath[PATH_SIZE];
     realpath(pathname, absolutePath);
@@ -142,30 +142,34 @@ int openFile(const char* pathname, int flags) {
 
     // Response
     int response;
-    read(SERVER_SOCKET, &response, 4);
+    read(SERVER_SOCKET, &response, sizeof(int));
 
+    free(payload);
+    free(header);
+
+    if (response != 1) {
+        errno = ENOENT;
+    }
+    
     switch (response) {
         case 1:
-            printf("Messaggio ricevuto: Apertura del File eseguita con successo!\n");
+            printf("SERVER: Apertura del File eseguita con successo!\n");
             break;
         case 0:
-            printf("Messaggio ricevuto: Impossibile aprire il File!\n");
+            printf("SERVER: Impossibile aprire il File richiesto.\n");
             break;
         case -1:
-            printf("Messaggio ricevuto: Impossibile eseguire open multiple sullo stesso file!\n");
+            printf("SERVER: Impossibile eseguire open multiple sullo stesso file!\n");
             break;
         case -2:
-            printf("Messaggio ricevuto: Impossibile eseguire la open sul file richiesto perché è in stato di Locked\n"); 
+            printf("SERVER: Impossibile eseguire la open sul file richiesto perché è in stato di Locked\n"); 
             break;
         case -3:
-            printf("Messaggio ricevuto: Impossibile eseguire la open sul file con il flag di Lock a 1 perché in questo momento è aperto da altri utenti\n");
+            printf("SERVER: Impossibile eseguire la open sul file con il flag di Lock a 1 perché in questo momento è aperto da altri utenti\n");
             break;
         default:
             break;
     }
-    
-    free(payload);
-    free(header);
 
     return response == 1 ? 0 : -1;
 }
@@ -178,14 +182,21 @@ int openFile(const char* pathname, int flags) {
  **/
 int readFile(const char* pathname, void** buf, size_t* size) {
     
-    printf("Invio una read di %s\n", pathname);
+    printf("CLIENT: Invio una read di \"%s\".\n", pathname);
+
+    DEBUG(("===================================================\n"));
 
     char absolutePath[PATH_SIZE];
     realpath(pathname, absolutePath);
 
+    int byte = 0;
     int id = READ_FILE;
     int pathLength = strlen(absolutePath) + 1;
     int payloadLength = pathLength;
+
+    DEBUG(("Packet Header:\n"));
+    DEBUG(("ID pacchetto: %d\n", id));
+    DEBUG(("Dimensione Payload %d\n", payloadLength));
 
     // Header
     char *header = malloc(sizeof(int) * 2);
@@ -193,20 +204,52 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
     // Payload
+    DEBUG(("Packet Payload:\n"));
     char *payload = malloc(payloadLength);
     memcpy(payload, absolutePath, pathLength);
+    
+    DEBUG(("Contenuto Payload: %s\n", payload));
+    byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
+    DEBUG(("Invio Header: %d byte scritti\n", byte));
 
-    write(SERVER_SOCKET, header, sizeof(int) * 2);
-    write(SERVER_SOCKET, payload, payloadLength);
+    byte = write(SERVER_SOCKET, payload, payloadLength);
+    DEBUG(("Invio Payload: %d byte scritti\n", byte));
+
+    DEBUG(("Response Header:\n"));
 
     // Response Header
     char *headerResponse = malloc(sizeof(int));
-    read(SERVER_SOCKET, headerResponse,  sizeof(int));
+    byte = read(SERVER_SOCKET, headerResponse,  sizeof(int));
+    DEBUG(("Leggo Header: %d byte letti\n", byte));
     int packetSize = *((int *) headerResponse);
+    DEBUG(("Dimensione Payload Response %d\n", packetSize));
 
+    // Se il packetSize è uguale a 0, allora il client non ha fatto la open
+    if (packetSize == 0) {
+        free(headerResponse);
+        free(payload);
+        free(header);
+
+        // Setto errno
+        errno = ENOENT;
+
+        DEBUG(("Esito: -1\n"));
+        DEBUG(("===================================================\n"));
+        printf("SERVER: Devi prima richiedere di aprire il File!\n");
+
+        // Restituisco errore
+        return -1;
+    }
     // Response Payload
     char *payloadResponse = (char *) malloc(sizeof(char) * packetSize);
-    read(SERVER_SOCKET, payloadResponse, packetSize);
+    byte = read(SERVER_SOCKET, payloadResponse, packetSize);
+    DEBUG(("Leggo Response: %d byte letti\n", byte));
+
+    DEBUG(("Contenuto Payload Response: %s\n", payloadResponse));
+    DEBUG(("Esito: 0\n"));
+    DEBUG(("===================================================\n"));
+
+    printf("SERVER: Contenuto del messaggio: \"%s\"\n", payloadResponse);
 
     if (buf != NULL || size != NULL) {
         *size = packetSize;
@@ -218,6 +261,7 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     free(headerResponse);
     free(payload);
     free(header);
+
 
     return 0;
 }
@@ -306,10 +350,10 @@ int writeFile(const char* pathname, const char* dirname) {
     FILE *file = NULL;
     if ((file = fopen(pathname, "r")) == NULL) {
         perror("ERRORE: apertura del file");
-        exit(errno);
+        return errno;
     }
 
-    printf("Invio una write di %s\n", pathname);
+    printf("CLIENT: Invio una write di \"%s\".\n", pathname);
     
     char absolutePath[PATH_SIZE];
     realpath(pathname, absolutePath);
@@ -352,20 +396,26 @@ int writeFile(const char* pathname, const char* dirname) {
     write(SERVER_SOCKET, payload, payloadLength);
     
     // Response
-    char *response = malloc(sizeof(char) * 100);
-
-    read(SERVER_SOCKET, response, BUFFER_RESPONSE_SIZE);
-    printf("Messaggio ricevuto: %s\n\n", response);
+    int response;
+    read(SERVER_SOCKET, &response, sizeof(int));
     
     free(content);
     free(header);
     free(payload);
-    free(response);
 
     if (fclose(file) != 0) {
-        perror("ERRORE: chiusura del file");
-        exit(errno);
+        perror("ERRORE: Chiusura del File");
+        return errno;
     }
+
+    if (response == 0) {
+        errno = ENOENT;
+
+        printf("SERVER: Devi prima richiedere di aprire il File!\n");
+        return -1;
+    }
+
+    printf("SERVER: Richiesta di write eseguita con successo.\n");
 
     return 0;
 }
@@ -384,7 +434,7 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     int payloadLength = sizeof(int) + pathLength + sizeof(int) + contentLength;
 
     // Header
-    char *header = malloc(sizeof(int) * 2);
+    char *header = (char *) malloc(sizeof(int) * 2);
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
@@ -407,6 +457,14 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     int response;
     read(SERVER_SOCKET, &response, sizeof(int));
 
+    free(payload);
+    free(header);
+
+    if (response == 0) {
+        errno = ENOENT;
+        printf("SERVER: Devi prima richiedere di aprire il File!\n");
+    }
+
     return response == 1 ? 0 : -1;
 }
 
@@ -420,9 +478,9 @@ int lockFile(const char* pathname);
  **/
 int closeFile(const char* pathname) {
 
-    printf("Invio una close di %s\n", pathname);
+    printf("CLIENT: Invio una close di \"%s\".\n", pathname);
     
-    char absolutePath[1024];
+    char absolutePath[STRING_SIZE];
     realpath(pathname, absolutePath);    
 
     int id = CLOSE_FILE;
@@ -441,14 +499,19 @@ int closeFile(const char* pathname) {
     write(SERVER_SOCKET, payload, payloadLength);
     
     // Response
-    char *response = malloc(sizeof(char) * 100);
-
-    read(SERVER_SOCKET, response, BUFFER_RESPONSE_SIZE);
-    printf("Messaggio ricevuto: %s\n\n", response);
+    int response;
+    read(SERVER_SOCKET, &response, sizeof(int));
     
-    free(response);
     free(payload);
     free(header);
+
+    if (response == 0) {
+        errno = ENOENT;
+        printf("SERVER: Devi prima richiedere di aprire il File!\n");
+        return -1;
+    }
+
+    printf("SERVER: Close eseguita con successo\n");
 
     return 0;
 }
@@ -459,7 +522,9 @@ int closeFile(const char* pathname) {
  **/
 int removeFile(const char* pathname) {
 
-    char absolutePath[1024];
+    printf("CLIENT: Invio una remove di \"%s\".\n", pathname);
+
+    char absolutePath[STRING_SIZE];
     realpath(pathname, absolutePath);    
 
     int id = REMOVE_FILE;
@@ -480,14 +545,20 @@ int removeFile(const char* pathname) {
     write(SERVER_SOCKET, payload, payloadLength);
     
     // Response
-    char *response = malloc(sizeof(char) * 100);
+    int response;
+    read(SERVER_SOCKET, &response, sizeof(int));
 
-    read(SERVER_SOCKET, response, BUFFER_RESPONSE_SIZE);
-    printf("Messaggio ricevuto: %s\n\n", response);
-    
-    free(response);
     free(payload);
     free(header);
+
+    if (response == 0) {
+        errno = ENOENT;
+        printf("SERVER: Devi prima richiedere di aprire il File!\n");
+        return -1;
+    }
+
+    
+    printf("SERVER: Remove eseguita con successo\n");
 
     return 0;
 }

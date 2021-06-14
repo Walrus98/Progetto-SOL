@@ -1,5 +1,5 @@
-ARGUMENT	= -f mysock -r messaggio3 -d test/prova/
-
+# ARGUMENT	= -f mysock -W messaggio2
+ARGUMENT	= -f mysock -r messaggio2 -d test/prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 

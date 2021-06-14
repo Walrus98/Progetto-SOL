@@ -9,7 +9,6 @@ static int (*compare) (void*, void*);
 
 void create_list(Node **list, int (*fun_compare) (void*, void*)) {
 	*list = NULL;
-
 	compare = fun_compare;
 }
 
