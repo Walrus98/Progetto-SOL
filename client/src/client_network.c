@@ -12,7 +12,7 @@
 #include <sys/un.h>
 
 #include "../include/client_network.h"
-#include "../include/utils.h"
+#include "../../core/include/utils.h"
 
 #define UNIX_PATH_MAX 108 
 #define BUFFER_RESPONSE_SIZE 100
@@ -205,7 +205,7 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     int packetSize = *((int *) headerResponse);
 
     // Response Payload
-    char *payloadResponse = malloc(sizeof(packetSize));
+    char *payloadResponse = (char *) malloc(sizeof(char) * packetSize);
     read(SERVER_SOCKET, payloadResponse, packetSize);
 
     if (buf != NULL || size != NULL) {
@@ -252,7 +252,7 @@ int readNFiles(int N, const char* dirname) {
     int packetSize = *((int *) headerResponse);
 
     // Response Payload
-    char *payloadResponse = malloc(sizeof(packetSize));
+    char *payloadResponse = (char *) malloc(sizeof(char) * packetSize);
 
     read(SERVER_SOCKET, payloadResponse, packetSize);    
 
@@ -317,13 +317,19 @@ int writeFile(const char* pathname, const char* dirname) {
     fseek(file, 0, SEEK_END);
     int textLength = ftell(file);
     fseek(file, 0, SEEK_SET);
+    rewind(file);
 
-    char *content = (char *) malloc(sizeof(char) * textLength);
-    fread(content, 1, textLength, file); 
+    char *content = (char *) malloc(sizeof(char) * textLength + 1);
+    int cont = 0;
+
+    while (cont < textLength) {
+        cont += fread(content, sizeof(char), textLength, file);
+    }
+    content[textLength] = '\0';
 
     int id = WRITE_FILE;
     int pathLength = strlen(absolutePath) + 1;
-    int contentLength = textLength;
+    int contentLength = strlen(content) + 1;
     int payloadLength = sizeof(int) + pathLength + sizeof(int) + contentLength;
 
     char *header = malloc(sizeof(int) * 2);
@@ -358,7 +364,7 @@ int writeFile(const char* pathname, const char* dirname) {
 
     if (fclose(file) != 0) {
         perror("ERRORE: chiusura del file");
-        exit(EXIT_FAILURE);
+        exit(errno);
     }
 
     return 0;

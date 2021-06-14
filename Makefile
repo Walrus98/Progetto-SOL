@@ -1,4 +1,4 @@
-ARGUMENT	= -f mysock -W test/ciao
+ARGUMENT	= -f mysock -r messaggio3 -d test/prova/
 
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g

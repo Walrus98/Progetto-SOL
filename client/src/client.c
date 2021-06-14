@@ -49,6 +49,7 @@ static int fun_compare(void *a, void *b) {
     return *(arg->command) == command;
 }
 
+static int TIME;
 static char *DIRNAME = NULL;
 
 int main(int argc, char *argv[]) {
@@ -137,7 +138,15 @@ void execute_arguments() {
 
     command = 't';
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
-        remove_value(&argumentList, arg);
+        char *argument = arg->argument;
+        long value;
+        if (isNumber(argument, &value) == 1) {
+            TIME = value; 
+            remove_value(&argumentList, arg);
+        } else {
+            fprintf(stderr, "L'argomento passato per parametro deve essere un numero! Digita -h per vedere i comandi disponibili.\n");
+            return;
+        }
     }
     
     command = 'd';
@@ -248,9 +257,9 @@ void handle_write_dir(char *optarg) {
         token = strtok(NULL, ",");
     }
 
-    for (int i = 0; i < size; i++) {
-        printf("%s\n", argument[i]);
-    }
+    // for (int i = 0; i < size; i++) {
+    //     printf("%s\n", argument[i]);
+    // }
     
     // Se non mi ha passato un numero dopo la virgola
     if (size == 1) {
@@ -279,7 +288,7 @@ void handle_write_dir(char *optarg) {
 
 void handle_write_files(char *optarg) {
 
-    char *token = strtok(optarg, ",");
+    char *token = strtok(optarg, ","); 
     while (token) {
 
         if (openFile(token, O_CREATE) == -1) openFile(token, NO_ARG);
@@ -291,17 +300,24 @@ void handle_write_files(char *optarg) {
 }
 
 void handle_read_files(char *optarg) {
+
+    size_t bufferSize;
+    void *buffer = NULL;
+
     char *token = strtok(optarg, ",");
     while (token) {
 
         openFile(token, NO_ARG);
-        if (DIRNAME == NULL) { 
-            readFile(token, NULL, NULL);
-        } else {
-            size_t bufferSize;
-            void *buffer = NULL;
-            readFile(token, &buffer, &bufferSize);
-            write_file_directory(DIRNAME, token, (char *) buffer);
+
+        if (readFile(token, &buffer, &bufferSize) == 0) {
+
+            printf("Messaggio ricevuto: %s\n", (char *) buffer);
+
+            if (DIRNAME != NULL) {
+                write_file_directory(DIRNAME, token, (char *) buffer);
+            }
+
+            free(buffer);
         }
 
         closeFile(token);
@@ -312,13 +328,12 @@ void handle_read_files(char *optarg) {
 
 void handle_read_n_files(char *optarg) {
     if (optarg == NULL) {
-        readNFiles(0, NULL);
-        return;
+        readNFiles(0, DIRNAME);
     } 
 
     long nFiles;
     if (isNumber(optarg, &nFiles)) {
-        readNFiles((int) nFiles, NULL);
+        readNFiles((int) nFiles, DIRNAME);
     } else {
         fprintf(stderr, "L'argomento passato per parametro deve essere un numero! Digita -h per vedere i comandi disponibili.\n");
     }
@@ -354,7 +369,6 @@ void check_attribute(char *path, int n) {
     } 
 
     if (S_ISREG(info.st_mode)) {
-        printf("FILE! %s\n", path);
         
         openFile(path, O_CREATE);
         writeFile(path, NULL);
@@ -362,7 +376,6 @@ void check_attribute(char *path, int n) {
 
         cont++;
     } else if (S_ISDIR(info.st_mode)) {
-        printf("DIRECTORY! %s\n", path);
         read_directories(path, n);
     }
 }    
@@ -379,12 +392,12 @@ void read_directories(char *dirName, int n) {
 
     char buf[100];
     if (getcwd(buf, 100)==NULL) {
-        perror("getcwd"); 
+        perror("ERRORE: impossibile prendere la directory corrente"); 
         exit(EXIT_FAILURE);
     }
 
     if (chdir(dirName) == -1) {
-        perror("chdir"); 
+        perror("ERRORE: impossibile spostarsi nella directory"); 
         exit(EXIT_FAILURE);
     }
 
@@ -405,23 +418,51 @@ void read_directories(char *dirName, int n) {
         }
     }
     if (chdir(buf) == -1) {
-        perror("chdir"); 
+        perror("ERRORE: impossibile spostarsi nella directory"); 
         exit(EXIT_FAILURE);
     }    
 }
 
 void write_file_directory(char *dirName, char *fileName, char *buffer) {
 
-    strncat(dirName, fileName, strlen(dirName) + 1);
+    if (chdir(dirName) == -1) {
+        perror("ERRORE: impossibile spostarsi nella directory");
+        exit(errno);
+    }
+
+    char directory[STRING_SIZE];
+    if (getcwd(directory, STRING_SIZE) == NULL) {
+        perror("ERRORE: impossibile prendere la directory corrente");
+        exit(errno);
+    }
+
+    char *token = strtok(fileName, "/"); 
+    char *fName = NULL;
+    while (token) {
+        fName = token;
+        token = strtok(NULL, "/");
+    }
+
+    if (fName != NULL) {
+        strcat(directory, "/");
+        strcat(directory, fName);
+    } else {
+        strcpy(directory, fileName);
+    }
 
     FILE *file = NULL;
-    if ((file = fopen(dirName, "w")) == NULL) {
+    if ((file = fopen(directory, "w")) == NULL) {
         perror("ERRORE: impossibile aprire il file");
         exit(errno);
     } 
 
     if (fprintf(file, "%s", buffer) < 0) {
         perror("ERRORE: impossibile scrivere il file");
+        exit(errno);
+    }
+
+    if (fclose(file) != 0) {
+        perror("ERRORE: impossibile chiudere il file");
         exit(errno);
     }
 }
