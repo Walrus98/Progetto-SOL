@@ -18,7 +18,7 @@
 #define BUFFER_RESPONSE_SIZE 100
 #define PATH_SIZE 1024
 
-static int SERVER_SOCKET;
+static int SERVER_SOCKET = -1;
 
 /**
  * Viene aperta una connessione AF_UNIX al socket file sockname. Se il server non accetta immediatamente la
@@ -28,37 +28,42 @@ static int SERVER_SOCKET;
  **/
 int openConnection(const char* sockname, int msec, const struct timespec abstime) {
 
-    // // Controllo se ho già effettuato una connessione al server
-    // if (SOCKET_PATH != NULL || SERVER_SOCKET != -1) {
-    //     errno = EISCONN;
-    //     return -1;
-    // }
+    // Controllo se ho già effettuato una connessione al server
+    if (SOCKET_PATH != NULL || SERVER_SOCKET != -1) {
+        errno = EISCONN;
+        return -1;
+    }
 
-    // // Controllo se gli argomenti passati per parametro sono validi
-    // if(sockname == NULL || msec < 0) {
-    //     errno = EINVAL;
-    //     return -1;
-    // }
+    // Controllo se gli argomenti passati per parametro sono validi
+    if(sockname == NULL || msec < 0) {
+        errno = EINVAL;
+        return -1;
+    }
 
     struct sockaddr_un sa;
     memset(&sa, '0', sizeof(sa));
     strncpy(sa.sun_path, sockname, UNIX_PATH_MAX);
     sa.sun_family = AF_UNIX;
 
-    SERVER_SOCKET = socket(AF_UNIX, SOCK_STREAM, 0);
+    if ((SERVER_SOCKET = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+        errno = EINVAL;
+        return -1;
+    }
 
-    // struct timespec timeWait;
-    // set_timespec_from_msec(msec, &timeWait);
+    int status;
+    struct timespec currTime;
+    clock_gettime(CLOCK_REALTIME, &currTime);
+        
+    while ((status = connect(SERVER_SOCKET, (struct sockaddr *) &sa, sizeof(sa))) == -1 && currTime.tv_sec < abstime.tv_sec) {
+        printf("CLIENT: Nessuna connessione effettuata! Provo nuovamente a connettermi...\n");
+        if (msec != 0) sleep(msec / 1000);
+        clock_gettime(CLOCK_REALTIME, &currTime);
+    }
 
-    // struct timespec currTime;
-    // clock_gettime(CLOCK_REALTIME, &currTime);
-
-    while (connect(SERVER_SOCKET, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
-        if (errno == ENOENT) {
-            /* sock non esiste */
-            // nanosleep(timeWait); 
-        } else
-            return -1;
+    if (status == -1) {
+        fprintf(stderr, "CLIENT: Impossibile stabilire una connessione con il server: Connection Timedout\n");
+        errno = ETIMEDOUT;
+        return -1;
     }
 
     if ((SOCKET_PATH = (char *) malloc(strlen(sockname) + 1)) == NULL) {

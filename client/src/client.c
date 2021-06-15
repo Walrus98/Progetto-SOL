@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <dirent.h>
@@ -54,7 +55,7 @@ static int fun_compare(void *a, void *b) {
 }
 
 // Tempo in millisecondi utilizzato dal comando -t
-static int TIME;
+static int TIME = 0;
 // Direcotry utilizzata dal comando -d
 static char *DIRNAME = NULL;
 
@@ -86,7 +87,7 @@ int main(int argc, char *argv[]) {
 void read_arguments(int argc, char *argv[]) {
  
     int opt;
-    while ((opt = getopt(argc, argv, ": f: w: W: r: R: d: c: h p")) != -1) {
+    while ((opt = getopt(argc, argv, ": h f: w: W: r: R: d: t: c: p")) != -1) {
         switch (opt) {
             // Se l'utente mi massa un comando senza argomento che in realtà lo richiede
             case ':':
@@ -276,8 +277,16 @@ void free_arguments() {
 
 void handle_socket_connection(char *socketName) {
     struct timespec abstime;
+    clock_gettime(CLOCK_REALTIME, &abstime);
+    abstime.tv_sec += 10;
 
-    openConnection(socketName, TIME, abstime);
+    if (openConnection(socketName, TIME, abstime) == -1) {
+        perror("ERRORE: Connessione con il server");
+
+        free_arguments();
+        printf("\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void handle_write_dir(char *optarg) {
