@@ -1,5 +1,5 @@
-# ARGUMENT	= -f mysock -W messaggio2
-ARGUMENT	= -f mysock -r messaggio2 -d test/prova/ -p
+# ARGUMENT	= -f mysock -W Makefile -p
+ARGUMENT	= -f mysock -r Makefile -d test/prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 

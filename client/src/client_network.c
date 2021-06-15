@@ -100,6 +100,7 @@ int openFile(const char* pathname, int flags) {
     char absolutePath[PATH_SIZE];
     realpath(pathname, absolutePath);
 
+    int byte;
     int id = OPEN_FILE;
     int pathLength = strlen(absolutePath) + 1;
     int ocreate, olock;
@@ -125,6 +126,16 @@ int openFile(const char* pathname, int flags) {
 
     int payloadLength = sizeof(int) + pathLength + sizeof(int) + sizeof(int);
 
+    DEBUG(("===================================================\n"));
+    DEBUG(("HEADER\n"));
+    DEBUG(("ID pacchetto: %d\n", id));
+    DEBUG(("Dimensione Payload %d\n", payloadLength));
+    DEBUG(("PAYLOAD\n"));
+    DEBUG(("Lunghezza Path: %d\n", pathLength));
+    DEBUG(("Path: %s\n", pathname));
+    DEBUG(("O_CREATE: %d\n", ocreate));
+    DEBUG(("O_LOCK: %d\n", olock));
+
     // Header
     char *header = malloc(sizeof(int) * 2);
     memcpy(header, &id, sizeof(int));
@@ -136,13 +147,21 @@ int openFile(const char* pathname, int flags) {
     memcpy(payload + sizeof(int), absolutePath, pathLength);
     memcpy(payload + sizeof(int) + pathLength, &ocreate, sizeof(int));
     memcpy(payload + sizeof(int) + pathLength + sizeof(int), &olock, sizeof(int));
+    
+    byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
+    DEBUG(("Invio Header: %d byte scritti\n", byte));
 
-    write(SERVER_SOCKET, header, sizeof(int) * 2);
-    write(SERVER_SOCKET, payload, payloadLength);
+    byte = write(SERVER_SOCKET, payload, payloadLength);
+    DEBUG(("Invio Payload: %d byte scritti\n", byte));
 
     // Response
     int response;
-    read(SERVER_SOCKET, &response, sizeof(int));
+    byte = read(SERVER_SOCKET, &response, sizeof(int));
+
+    DEBUG(("RESPONSE\n"));
+    DEBUG(("Leggo Response: %d byte letti\n", byte));
+    DEBUG(("Esito: %d\n", response));
+    DEBUG(("===================================================\n"));
 
     free(payload);
     free(header);
@@ -184,8 +203,6 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     
     printf("CLIENT: Invio una read di \"%s\".\n", pathname);
 
-    DEBUG(("===================================================\n"));
-
     char absolutePath[PATH_SIZE];
     realpath(pathname, absolutePath);
 
@@ -194,35 +211,37 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     int pathLength = strlen(absolutePath) + 1;
     int payloadLength = pathLength;
 
-    DEBUG(("Packet Header:\n"));
+    DEBUG(("===================================================\n"));
+    DEBUG(("HEADER\n"));
     DEBUG(("ID pacchetto: %d\n", id));
     DEBUG(("Dimensione Payload %d\n", payloadLength));
+    DEBUG(("PAYLOAD\n"));
+    DEBUG(("Lunghezza Path: %d\n", pathLength));
+    DEBUG(("Path: %s\n", pathname));
 
     // Header
     char *header = malloc(sizeof(int) * 2);
     memcpy(header, &id, sizeof(int));
-    memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
+    memcpy(header + sizeof(int), &payloadLength, sizeof(int));    
 
     // Payload
-    DEBUG(("Packet Payload:\n"));
     char *payload = malloc(payloadLength);
     memcpy(payload, absolutePath, pathLength);
-    
-    DEBUG(("Contenuto Payload: %s\n", payload));
+
     byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
     DEBUG(("Invio Header: %d byte scritti\n", byte));
 
     byte = write(SERVER_SOCKET, payload, payloadLength);
     DEBUG(("Invio Payload: %d byte scritti\n", byte));
 
-    DEBUG(("Response Header:\n"));
-
     // Response Header
     char *headerResponse = malloc(sizeof(int));
     byte = read(SERVER_SOCKET, headerResponse,  sizeof(int));
-    DEBUG(("Leggo Header: %d byte letti\n", byte));
+
+    DEBUG(("RESPONSE\n"));
+    DEBUG(("Leggo Header Response: %d byte letti\n", byte));
+
     int packetSize = *((int *) headerResponse);
-    DEBUG(("Dimensione Payload Response %d\n", packetSize));
 
     // Se il packetSize è uguale a 0, allora il client non ha fatto la open
     if (packetSize == 0) {
@@ -233,7 +252,7 @@ int readFile(const char* pathname, void** buf, size_t* size) {
         // Setto errno
         errno = ENOENT;
 
-        DEBUG(("Esito: -1\n"));
+        DEBUG(("Esito: 0\n"));
         DEBUG(("===================================================\n"));
         printf("SERVER: Devi prima richiedere di aprire il File!\n");
 
@@ -243,10 +262,10 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     // Response Payload
     char *payloadResponse = (char *) malloc(sizeof(char) * packetSize);
     byte = read(SERVER_SOCKET, payloadResponse, packetSize);
-    DEBUG(("Leggo Response: %d byte letti\n", byte));
 
+    DEBUG(("Leggo Payload Response: %d byte letti\n", byte));
     DEBUG(("Contenuto Payload Response: %s\n", payloadResponse));
-    DEBUG(("Esito: 0\n"));
+    DEBUG(("Esito: 1\n"));
     DEBUG(("===================================================\n"));
 
     printf("SERVER: Contenuto del messaggio: \"%s\"\n", payloadResponse);
@@ -261,7 +280,6 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     free(headerResponse);
     free(payload);
     free(header);
-
 
     return 0;
 }
@@ -371,10 +389,21 @@ int writeFile(const char* pathname, const char* dirname) {
     }
     content[textLength] = '\0';
 
+    int byte;
     int id = WRITE_FILE;
     int pathLength = strlen(absolutePath) + 1;
     int contentLength = strlen(content) + 1;
     int payloadLength = sizeof(int) + pathLength + sizeof(int) + contentLength;
+
+    DEBUG(("===================================================\n"));
+    DEBUG(("HEADER\n"));
+    DEBUG(("ID pacchetto: %d\n", id));
+    DEBUG(("Dimensione Payload %d\n", payloadLength));
+    DEBUG(("PAYLOAD\n"));
+    DEBUG(("Lunghezza Path: %d\n", pathLength));
+    DEBUG(("Path: %s\n", absolutePath));
+    DEBUG(("Lunghezza Content: %d\n", contentLength));
+    DEBUG(("Content: %s\n", content));
 
     char *header = malloc(sizeof(int) * 2);
     memcpy(header, &id, sizeof(int));
@@ -392,12 +421,19 @@ int writeFile(const char* pathname, const char* dirname) {
     currentPosition += sizeof(int);
     memcpy(currentPosition, content, contentLength);
 
-    write(SERVER_SOCKET, header, sizeof(int) * 2);
-    write(SERVER_SOCKET, payload, payloadLength);
+    byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
+    DEBUG(("Invio Header: %d byte scritti\n", byte));
+    byte = write(SERVER_SOCKET, payload, payloadLength);
+    DEBUG(("Invio Payload: %d byte scritti\n", byte));
     
     // Response
     int response;
-    read(SERVER_SOCKET, &response, sizeof(int));
+    byte = read(SERVER_SOCKET, &response, sizeof(int));
+
+    DEBUG(("RESPONSE\n"));
+    DEBUG(("Leggo Response: %d byte letti\n", byte));
+    DEBUG(("Esito: %d\n", response));
+    DEBUG(("===================================================\n"));
     
     free(content);
     free(header);
@@ -405,7 +441,7 @@ int writeFile(const char* pathname, const char* dirname) {
 
     if (fclose(file) != 0) {
         perror("ERRORE: Chiusura del File");
-        return errno;
+        return -1;
     }
 
     if (response == 0) {
@@ -428,10 +464,21 @@ int writeFile(const char* pathname, const char* dirname) {
  **/
 int appendToFile(const char* pathname, void* buf, size_t size, const char* dirname) {
 
+    int byte;
     int id = APPEND_TO_FILE;
     int pathLength = strlen(pathname) + 1;
     int contentLength = strlen(buf) + 1;
     int payloadLength = sizeof(int) + pathLength + sizeof(int) + contentLength;
+
+    DEBUG(("===================================================\n"));
+    DEBUG(("HEADER\n"));
+    DEBUG(("ID pacchetto: %d\n", id));
+    DEBUG(("Dimensione Payload %d\n", payloadLength));
+    DEBUG(("PAYLOAD\n"));
+    DEBUG(("Lunghezza Path: %d\n", pathLength));
+    DEBUG(("Path: %s\n", pathname));
+    DEBUG(("Lunghezza Content: %d\n", contentLength));
+    DEBUG(("Content: %s\n", (char *) buf));
 
     // Header
     char *header = (char *) malloc(sizeof(int) * 2);
@@ -450,12 +497,19 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     currentPosition += sizeof(int);
     memcpy(currentPosition, buf, contentLength);
 
-    write(SERVER_SOCKET, header, sizeof(int) * 2);
-    write(SERVER_SOCKET, payload, payloadLength);
+    byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
+    DEBUG(("Invio Header: %d byte scritti\n", byte));
+    byte = write(SERVER_SOCKET, payload, payloadLength);
+    DEBUG(("Invio Payload: %d byte scritti\n", byte));
 
     // Response
     int response;
-    read(SERVER_SOCKET, &response, sizeof(int));
+    byte = read(SERVER_SOCKET, &response, sizeof(int));
+    
+    DEBUG(("RESPONSE\n"));
+    DEBUG(("Leggo Response: %d byte letti\n", byte));
+    DEBUG(("Esito: %d\n", response));
+    DEBUG(("===================================================\n"));
 
     free(payload);
     free(header);
@@ -483,9 +537,18 @@ int closeFile(const char* pathname) {
     char absolutePath[STRING_SIZE];
     realpath(pathname, absolutePath);    
 
+    int byte;
     int id = CLOSE_FILE;
     int pathLength = strlen(absolutePath) + 1;
     int payloadLength = pathLength;
+
+    DEBUG(("===================================================\n"));
+    DEBUG(("HEADER\n"));
+    DEBUG(("ID pacchetto: %d\n", id));
+    DEBUG(("Dimensione Payload %d\n", payloadLength));
+    DEBUG(("PAYLOAD\n"));
+    DEBUG(("Lunghezza Path: %d\n", pathLength));
+    DEBUG(("Path: %s\n", pathname));
 
     char *header = malloc(sizeof(int) * 2);
     memcpy(header, &id, sizeof(int));
@@ -495,12 +558,19 @@ int closeFile(const char* pathname) {
     char *payload = malloc(payloadLength);
     memcpy(payload, absolutePath, pathLength);
 
-    write(SERVER_SOCKET, header, sizeof(int) * 2);
-    write(SERVER_SOCKET, payload, payloadLength);
+    byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
+    DEBUG(("Invio Header: %d byte scritti\n", byte));
+    byte = write(SERVER_SOCKET, payload, payloadLength);
+    DEBUG(("Invio Payload: %d byte scritti\n", byte));
     
     // Response
     int response;
-    read(SERVER_SOCKET, &response, sizeof(int));
+    byte = read(SERVER_SOCKET, &response, sizeof(int));
+    
+    DEBUG(("RESPONSE\n"));
+    DEBUG(("Leggo Response: %d byte letti\n", byte));
+    DEBUG(("Esito: %d\n", response));
+    DEBUG(("===================================================\n"));
     
     free(payload);
     free(header);
@@ -527,9 +597,18 @@ int removeFile(const char* pathname) {
     char absolutePath[STRING_SIZE];
     realpath(pathname, absolutePath);    
 
+    int byte;
     int id = REMOVE_FILE;
     int pathLength = strlen(absolutePath) + 1;
     int payloadLength = pathLength;
+
+    DEBUG(("===================================================\n"));
+    DEBUG(("HEADER\n"));
+    DEBUG(("ID pacchetto: %d\n", id));
+    DEBUG(("Dimensione Payload %d\n", payloadLength));
+    DEBUG(("PAYLOAD\n"));
+    DEBUG(("Lunghezza Path: %d\n", pathLength));
+    DEBUG(("Path: %s\n", pathname));
 
     // Header
     char *header = malloc(sizeof(int) * 2);
@@ -541,12 +620,19 @@ int removeFile(const char* pathname) {
     memcpy(payload, &pathLength, sizeof(int));
     memcpy(payload + sizeof(int), absolutePath, pathLength);
 
-    write(SERVER_SOCKET, header, sizeof(int) * 2);
-    write(SERVER_SOCKET, payload, payloadLength);
-    
+    byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
+    DEBUG(("Invio Header: %d byte scritti\n", byte));
+    byte = write(SERVER_SOCKET, payload, payloadLength);
+    DEBUG(("Invio Payload: %d byte scritti\n", byte));
+
     // Response
     int response;
-    read(SERVER_SOCKET, &response, sizeof(int));
+    byte = read(SERVER_SOCKET, &response, sizeof(int));
+
+    DEBUG(("RESPONSE\n"));
+    DEBUG(("Leggo Response: %d byte letti\n", byte));
+    DEBUG(("Esito: %d\n", response));
+    DEBUG(("===================================================\n"));
 
     free(payload);
     free(header);

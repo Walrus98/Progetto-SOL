@@ -159,7 +159,7 @@ void execute_arguments() {
     if ((arg = (Argument *) get_value(argumentList, &command)) != NULL) {
         // Abilito la modalità di debug
         DEBUG_ENABLE = 1;
-        DEBUG(("modalità di DEBUG attivata.\n"));
+        DEBUG(("Modalità di DEBUG attivata.\n"));
         // Rimuovo il comando dalla lista
         remove_value(&argumentList, arg);
     }
