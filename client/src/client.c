@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #include "../include/client_network.h"
-#include "../include/list_utils.h"
+#include "../../core/include/list_utils.h"
 #include "../../core/include/utils.h"
 
 // Metodi per leggere gli argomenti passati da linea di comando
@@ -62,7 +62,7 @@ static char *DIRNAME = NULL;
 int main(int argc, char *argv[]) {
 
     if (argc == 1) {
-        fprintf(stderr, "Nessun argomento passato per parametro! Digita -h per vedere i comandi disponibili.\n");
+        fprintf(stderr, "\nNessun argomento passato per parametro! Digita -h per vedere i comandi disponibili.\n");
         return EXIT_FAILURE;
     }
 
@@ -306,10 +306,6 @@ void handle_write_dir(char *optarg) {
         token = strtok(NULL, ",");
     }
 
-    // for (int i = 0; i < size; i++) {
-    //     printf("%s\n", argument[i]);
-    // }
-    
     // Se non mi ha passato un numero dopo la virgola
     if (size == 1) {
         // Leggo tutte le directory

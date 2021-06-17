@@ -4,7 +4,7 @@
 #include <errno.h>
 
 #include "../include/server_config.h"
-#include "../include/server_storage.h"
+#include "../include/storage.h"
 #include "../include/server_network.h"
 
 int main(void) {
@@ -15,7 +15,7 @@ int main(void) {
     get_file_config();   
 
     // Creo il server storage
-    create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY, REPLACEMENT_POLICY);
+    create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY); //REPLACEMENT_POLICY
 
     // Stabilisco la connessione con i client
     create_connection(THREAD_WORKERS_AMOUNT);

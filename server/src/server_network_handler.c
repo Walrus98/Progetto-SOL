@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#include "../include/list_utils.h"
+#include "../../core/include/list_utils.h"
 #include "../include/pthread_utils.h"
 #include "../include/server_network_handler.h"
 
-static List packetBuffer;
+static List packetBuffer = NULL;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond  = PTHREAD_COND_INITIALIZER;

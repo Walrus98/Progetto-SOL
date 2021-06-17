@@ -58,17 +58,6 @@ int string_compare(void* a, void* b)
     return (strcmp( (char*)a, (char*)b ) == 0);
 }
 
-int int_compare(void* a, void* b) 
-{
-    int var1 = *((int *) a);
-    int var2 = *((int *) b);
-
-    // printf("A: %d\n", var1);
-    // printf("B: %d\n", var2);
-    return var1 == var2;
-}
-
-
 /**
  * Create a new hash table.
  *

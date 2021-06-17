@@ -16,7 +16,7 @@
 
 #define UNIX_PATH_MAX 108 
 #define BUFFER_RESPONSE_SIZE 100
-#define PATH_SIZE 1024
+// #define PATH_SIZE 1024
 
 static int SERVER_SOCKET = -1;
 
@@ -102,7 +102,7 @@ int openFile(const char* pathname, int flags) {
 
     printf("CLIENT: Invio una open di \"%s\".\n", pathname);
 
-    char absolutePath[PATH_SIZE];
+    char absolutePath[STRING_SIZE];
     realpath(pathname, absolutePath);
 
     int byte;
@@ -208,7 +208,7 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     
     printf("CLIENT: Invio una read di \"%s\".\n", pathname);
 
-    char absolutePath[PATH_SIZE];
+    char absolutePath[STRING_SIZE];
     realpath(pathname, absolutePath);
 
     int byte = 0;
@@ -378,7 +378,7 @@ int writeFile(const char* pathname, const char* dirname) {
 
     printf("CLIENT: Invio una write di \"%s\".\n", pathname);
     
-    char absolutePath[PATH_SIZE];
+    char absolutePath[STRING_SIZE];
     realpath(pathname, absolutePath);
 
     fseek(file, 0, SEEK_END);
@@ -647,7 +647,6 @@ int removeFile(const char* pathname) {
         printf("SERVER: Devi prima richiedere di aprire il File!\n");
         return -1;
     }
-
     
     printf("SERVER: Remove eseguita con successo\n");
 
