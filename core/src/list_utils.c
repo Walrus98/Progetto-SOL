@@ -28,7 +28,7 @@ void add_tail(Node **list, void *value) {
     Node *newNode;
 	if ((newNode = (Node *) malloc(sizeof(Node))) == NULL) {
         perror("ERRORE: impossibile allocare la memoria richiesta per la creazione del nodo nella lista");
-		exit(errno);
+		exit(errno); // ??????????????????????????  RETURN ???
 	}
 	newNode->value = value;
 	newNode->next = NULL;

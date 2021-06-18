@@ -1,6 +1,15 @@
 #ifndef STORAGE_H
 #define STORAGE_H
 
+typedef struct File {
+    char *filePath;
+    char *fileContent;
+    size_t *fileSize;
+    int *fifo;
+    pthread_mutex_t *fileLock;
+} File;
+
+
 void create_storage(size_t fileCapacity, size_t storageCapacity);
 
 int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock);

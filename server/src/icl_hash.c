@@ -17,6 +17,7 @@
 #include <assert.h>
 
 #include "../include/icl_hash.h"
+#include "../include/storage.h"
 
 #include <limits.h>
 
@@ -41,6 +42,7 @@ unsigned int
 hash_pjw(void* key)
 {
     char *datum = (char *)key;
+
     unsigned int hash_value, i;
 
     if(!datum) return 0;
@@ -52,6 +54,26 @@ hash_pjw(void* key)
     }
     return (hash_value);
 }
+
+unsigned int
+hash_samu(void* key)
+{
+    File *file = (File *) key;
+
+    char *datum = (char *) file->filePath;
+    printf("FUNZIONE HASH %s\n", datum);
+    unsigned int hash_value, i;
+
+    if(!datum) return 0;
+
+    for (hash_value = 0; *datum; ++datum) {
+        hash_value = (hash_value << ONE_EIGHTH) + *datum;
+        if ((i = hash_value & HIGH_BITS) != 0)
+            hash_value = (hash_value ^ (i >> THREE_QUARTERS)) & ~HIGH_BITS;
+    }
+    return (hash_value);
+}
+
 
 int string_compare(void* a, void* b) 
 {
@@ -85,7 +107,7 @@ icl_hash_create( int nbuckets, unsigned int (*hash_function)(void*), int (*hash_
     for(i=0;i<ht->nbuckets;i++)
         ht->buckets[i] = NULL;
 
-    ht->hash_function = hash_function ? hash_function : hash_pjw;
+    ht->hash_function = hash_function ? hash_function : hash_samu;
     ht->hash_key_compare = hash_key_compare ? hash_key_compare : string_compare;
 
     return ht;
