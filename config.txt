@@ -1,5 +1,0 @@
-storage_file_capacity: 3
-storage_capacity: 2048
-storage_policy: 0
-thread_workers_amount: 5
-socket_file_name: tmp

@@ -38,10 +38,13 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             flagCreate = *((int *) (payload + sizeof(int) + pathLength));
             flagLock = *((int *) (payload + sizeof(int) + pathLength + sizeof(int)));
 
+            printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\n", path);
+
+
             response = open_file(fileDescriptor, path, flagCreate, flagLock);
             write(fileDescriptor, &response, sizeof(int));
 
-            printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
+            // printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
             
             break;
 
@@ -89,10 +92,12 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             contentLength = *((int *) (payload + sizeof(int) + pathLength));
             content = (payload + sizeof(int) + pathLength + sizeof(int));
 
+            printf("SERVER: Ricevuta una richiesta di write sul file \"%s\"\n", path);
+
             response = write_file(fileDescriptor, path, content);
             write(fileDescriptor, &response, sizeof(int));
            
-            printf("SERVER: Ricevuta una richiesta di write sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
+            // printf("SERVER: Ricevuta una richiesta di write sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
             break;
 
         case APPEND_TO_FILE:
@@ -102,10 +107,12 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
         case CLOSE_FILE:       
             path = payload;
 
+            printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\n", path);
+
             response = close_file(fileDescriptor, path);
             write(fileDescriptor, &response, sizeof(int));
 
-            printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
+            // printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
             break;
         
         case REMOVE_FILE:

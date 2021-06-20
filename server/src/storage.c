@@ -68,84 +68,6 @@ void create_storage(size_t fileCapacity, size_t storageCapacity) {
     storage = icl_hash_create(fileCapacity, NULL, hash_compare);
 }
 
-// int insert_file_storage(int fileDescriptor, char *filePath, char *fileContent) {
-
-//     LOCK(&STORAGE_LOCK);
-
-//     // Controllo se il file è già presente o meno nello storage
-//     File *file = get_file(filePath);
-
-//     // Se il file è diverso da null, significa che è già presente e quindi devo modificarlo (append)
-//     if (file != NULL) {
-//         remove_file_storage(file);
-
-//         UNLOCK(&STORAGE_LOCK);
-//         insert_file_storage(fileDescriptor, filePath, fileContent);
-//     }
-
-//     size_t pathLength = strlen(filePath) + 1;
-//     size_t contentLength = strlen(fileContent) + 1;
-//     size_t fileSize = pathLength + contentLength;
-
-//     // Se il numero di file caricati sul server storage è maggiore della capacità massima, allora applico la politica di rimpiazzamento
-//     LOCK(&CAPACITY_LOCK);
-//     if (CURRENT_FILE_AMOUNT + 1 > STORAGE_FILE_CAPACITY) {
-//         UNLOCK(&CAPACITY_LOCK);
-//         fprintf(stderr, "ATTENZIONE: raggiunta il massimo numero di File nello Storage.\n");
-//         replace_file_storage();
-//     }
-//     UNLOCK(&CAPACITY_LOCK);
-
-//     // Se la dimensione corrente + quella del file che sto andando a caricare supera la capacità massima, allora applico la politica di rimpiazzamtno
-//     LOCK(&CAPACITY_LOCK);
-//     while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
-//         UNLOCK(&CAPACITY_LOCK);
-//         fprintf(stderr, "ATTENZIONE: raggiunta la dimensione massima dello Storage.\n");
-//         replace_file_storage(); 
-//         LOCK(&CAPACITY_LOCK);
-//     }     
-//     UNLOCK(&CAPACITY_LOCK);
-
-//     File *newFile = (File *) malloc(sizeof(File));
-   
-// 	char *path = (char *) malloc(pathLength);
-// 	strncpy(path, filePath, pathLength);
-// 	newFile->filePath = path;
-
-//     char *content = (char *) malloc(contentLength);
-// 	strncpy(content, fileContent, contentLength);
-// 	newFile->fileContent = content;
-
-//     size_t *size = (size_t *) malloc(sizeof(size_t));
-// 	*size = fileSize;
-// 	newFile->fileSize = size;
-
-//     int *fifo = (int *) malloc(sizeof(int));
-//     *fifo = CURRENT_FILE_AMOUNT;
-//     newFile->fifo = fifo;
-
-//     pthread_mutex_t *lock = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
-//     pthread_mutex_init(lock, NULL);
-// 	newFile->fileLock = lock;
-
-//     Node *usersList = NULL;
-//     // create_list(&usersList, list_compare);
-//     int *fd = (int *) malloc(sizeof(int));
-//     *fd = fileDescriptor;
-//     add_tail(&usersList, fd);
-        
-//     icl_hash_insert(storage, newFile, usersList);
-    
-//     LOCK(&CAPACITY_LOCK);
-//     CURRENT_FILE_AMOUNT++;
-//     CURRENT_STORAGE_SIZE += *(newFile->fileSize);
-//     UNLOCK(&CAPACITY_LOCK);
-    
-//     UNLOCK(&STORAGE_LOCK);
-
-//     return 0;
-// }
-
 int insert_file_storage(int fileDescriptor, char *filePath) {
 
     LOCK(&STORAGE_LOCK);
@@ -259,6 +181,7 @@ int remove_file_storage(File *fileToRemove) {
     for (Node *currentList = usersList; currentList != NULL; ) {
         Node *temp = currentList;
         currentList = currentList->next;
+        
         free(temp->value);
         free(temp);
     }
@@ -277,7 +200,7 @@ int remove_file_storage(File *fileToRemove) {
 
     UNLOCK(lock);
     free(lock);
-
+    
     return 0;
 }
 
@@ -300,8 +223,6 @@ File *get_file(char *filePath) {
 
 void print_storage() {
 
-    LOCK(&STORAGE_LOCK);
-
     for (int i = 0; i < storage->nbuckets; i++) {
         icl_entry_t *bucket = storage->buckets[i];
         icl_entry_t *curr;
@@ -317,12 +238,10 @@ void print_storage() {
             curr = curr->next;
         }
     }
-
-    UNLOCK(&STORAGE_LOCK);
 }
 
 void destroy_storage() {
-
+    
     LOCK(&STORAGE_LOCK);
 
     for (int i = 0; i < storage->nbuckets; i++) {
@@ -432,7 +351,7 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
 }
 
 int close_file(int fileDescriptor, char *filePath) {
-    return 0;
+
     // Controllo se il file esiste all'interno dello storage
     File *file = get_file(filePath);
 
@@ -454,10 +373,21 @@ int close_file(int fileDescriptor, char *filePath) {
         UNLOCK(file->fileLock);
         return -1;
     }
+    
+    int *test2 = malloc(sizeof(int));
+    *test2 = 2;
+    
+    int *test1 = malloc(sizeof(int));
+    *test1 = 33;
+
+    add_tail(&usersList, test2);
+    add_tail(&usersList, test1);
+
+    remove_value(&usersList, test1);
 
     // Altrimenti rimuovo il valore dalla lista e libero la memoria
-    remove_value(&usersList, &fileDescriptor);
-    free(fd);
+    // remove_value(&usersList, test1);
+    // free(fd);
 
     // Rilascio la lock
     UNLOCK(file->fileLock);
@@ -468,6 +398,7 @@ int close_file(int fileDescriptor, char *filePath) {
 int remove_file(int fileDescriptor, char *filePath) {
     return 0;
 }
+
 void disconnect_client(int fileDescriptor) {
 
 }
