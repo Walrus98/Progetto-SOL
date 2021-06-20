@@ -27,60 +27,29 @@
 
 void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
 
-    int fileLength;
-    char *filePath;
-    int contentLength;
-    int response;
-    int flagCreate;
-    int flagLock;
-
+    int pathLength, contentLength, response, flagCreate, flagLock, n;
+    char *path;
 
     switch (packetID) {
 
         case OPEN_FILE:
-            fileLength = *((int *) payload);
-            filePath = payload + sizeof(int);
-            flagCreate = *((int *) (payload + sizeof(int) + fileLength));
-            flagLock = *((int *) (payload + sizeof(int) + fileLength + sizeof(int)));
+            pathLength = *((int *) payload);
+            path = payload + sizeof(int);
+            flagCreate = *((int *) (payload + sizeof(int) + pathLength));
+            flagLock = *((int *) (payload + sizeof(int) + pathLength + sizeof(int)));
 
-            // printf("Header ID -> %d\n", packetID);
-            // printf("Header Size -> %d\n", packetSize);
-            // printf("Name Length -> %d\n", fileLength);
-            // printf("Name -> %s\n", filePath);
-            // printf("Flag Create -> %d\n", flagCreate);
-            // printf("Flag Lock -> %d\n", flagLock);
-
-            response = open_file(fileDescriptor, filePath, flagCreate, flagLock);
-
+            response = open_file(fileDescriptor, path, flagCreate, flagLock);
             write(fileDescriptor, &response, sizeof(int));
 
-            // switch (response) {
-            //     case 1:
-            //         write(fileDescriptor, "Apertura del File eseguita con successo!", 100);
-            //         break;
-            //     case 0:
-            //         write(fileDescriptor, "Impossibile aprire il File!", 100);
-            //         break;
-            //     case -1:
-            //         write(fileDescriptor, "Impossibile eseguire open multiple sullo stesso file!", 100);
-            //         break;
-            //     case -2:
-            //         write(fileDescriptor, "Impossibile eseguire la open sul file richiesto perché è in stato di Locked", 100); 
-            //         break;
-            //     case -3:
-            //         write(fileDescriptor, "Impossibile eseguire la open sul file con il flag di Lock a 1 perché in questo momento è aperto da altri utenti", 100); 
-            //         break;
-            //     default:
-            //         break;
-            // }
+            printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
+            
             break;
 
         case READ_FILE:
-            ;
-            filePath = payload;
+            path = payload;
 
             contentLength = 0;
-            char *content = read_file(fileDescriptor, filePath, &contentLength);
+            char *content = read_file(fileDescriptor, path, &contentLength);
 
             // Se l'utente ha eseguito la open sul file
             if (content != NULL) {
@@ -101,9 +70,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             break;
 
         case READ_N_FILES:
-            ;
-
-            int n = *((int *) payload);
+            n = *((int *) payload);
             int bufferSize = 0;
 
             char *test = read_n_file(n, &bufferSize);
@@ -117,44 +84,35 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             break;
 
         case WRITE_FILE:
-            ;
-            fileLength = *((int *) payload);
-            filePath = payload + sizeof(int);
+            pathLength = *((int *) payload);
+            path = payload + sizeof(int);
+            contentLength = *((int *) (payload + sizeof(int) + pathLength));
+            content = (payload + sizeof(int) + pathLength + sizeof(int));
 
-            contentLength = *((int *) (payload + sizeof(int) + fileLength));
-            content = (payload + sizeof(int) + fileLength + sizeof(int));
-
-            response = write_file(fileDescriptor, filePath, content);
-
+            response = write_file(fileDescriptor, path, content);
             write(fileDescriptor, &response, sizeof(int));
-            // if (response == 1) {
-            //     write(fileDescriptor, "Write eseguita con successo!", 100); 
-            // } else {
-            //     write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100); 
-            // }
-
+           
+            printf("SERVER: Ricevuta una richiesta di write sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
             break;
 
         case APPEND_TO_FILE:
 
             break;
 
-        case CLOSE_FILE:            
-            ;
-            filePath = payload;
+        case CLOSE_FILE:       
+            path = payload;
 
-            response = close_file(fileDescriptor, filePath);
-
+            response = close_file(fileDescriptor, path);
             write(fileDescriptor, &response, sizeof(int));
-            
+
+            printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
             break;
         
         case REMOVE_FILE:
-            ;
-            fileLength = *((int *) payload);
-            filePath = payload + 4;
+            pathLength = *((int *) payload);
+            path = payload + 4;
 
-            response = remove_file(fileDescriptor, filePath);
+            response = remove_file(fileDescriptor, path);
             
             switch (response) {
                 case 1:

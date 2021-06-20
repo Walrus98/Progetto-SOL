@@ -55,9 +55,12 @@ void create_connection(size_t poolSize) {
 
     // Eseguo la JOIN su i thread creati. In questo modo il thread main termina solo quando tutti gli altri thread sono terminati
     JOIN(threadSignalHandler);
+    printf("SERVER: Termino l'esecuzione del Thread Signal Handler\n");
     JOIN(threadDispatcher);
+    printf("SERVER: Termino l'esecuzione del Thread Dispatcher\n");
     for (int i = 0; i < poolSize; i++) {
         JOIN(threadWorker[i]);
+        printf("SERVER: Termino l'esecuzione del Thread Worker\n");
     }
 
     free(threadWorker);

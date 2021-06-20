@@ -29,11 +29,11 @@ void *handle_signal(void *handlerArgument) {
     if (signal == SIGINT || signal == SIGQUIT) {
         strncpy(message, "force-stop", 10);
 
-        printf("Ricevuto un SIGNINT o un SIGQUIT\n");
+        printf("\nSERVER: Ricevuto un segnale di SIGNINT o SIGQUIT\n");
     } else {
         strncpy(message, "stop", 10);
 
-        printf("Ricevuto un SIGHUP\n");
+        printf("\nSERVER: Ricevuto un segnale di SIGHUP\n");
     }
 
     if (write(pipeHandleConnection[1], &message, 10) == -1) {

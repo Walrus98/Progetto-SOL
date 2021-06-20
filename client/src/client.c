@@ -61,11 +61,6 @@ static char *DIRNAME = NULL;
 
 int main(int argc, char *argv[]) {
 
-    handle_socket_connection("mysock");
-    openFile("messaggio2", O_CREATE);
-
-    return 0;
-
     if (argc == 1) {
         fprintf(stderr, "\nNessun argomento passato per parametro! Digita -h per vedere i comandi disponibili.\n");
         return EXIT_FAILURE;

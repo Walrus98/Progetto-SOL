@@ -21,6 +21,8 @@ int main(void) {
     create_connection(THREAD_WORKERS_AMOUNT);
 
     destroy_storage();
+
+    printf("\n");
       
     return EXIT_SUCCESS;
 }

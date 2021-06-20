@@ -61,7 +61,6 @@ hash_samu(void* key)
     File *file = (File *) key;
 
     char *datum = (char *) file->filePath;
-    printf("FUNZIONE HASH %s\n", datum);
     unsigned int hash_value, i;
 
     if(!datum) return 0;
@@ -73,7 +72,6 @@ hash_samu(void* key)
     }
     return (hash_value);
 }
-
 
 int string_compare(void* a, void* b) 
 {

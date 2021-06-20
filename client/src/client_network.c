@@ -176,26 +176,17 @@ int openFile(const char* pathname, int flags) {
     }
     
     switch (response) {
-        case 1:
-            printf("SERVER: Apertura del File eseguita con successo!\n");
-            break;
         case 0:
-            printf("SERVER: Impossibile aprire il File richiesto.\n");
+            printf("SERVER: Apertura del File eseguita con successo!\n");
             break;
         case -1:
             printf("SERVER: Impossibile eseguire open multiple sullo stesso file!\n");
-            break;
-        case -2:
-            printf("SERVER: Impossibile eseguire la open sul file richiesto perché è in stato di Locked\n"); 
-            break;
-        case -3:
-            printf("SERVER: Impossibile eseguire la open sul file con il flag di Lock a 1 perché in questo momento è aperto da altri utenti\n");
             break;
         default:
             break;
     }
 
-    return response == 1 ? 0 : -1;
+    return response;
 }
 
 /**
@@ -449,7 +440,7 @@ int writeFile(const char* pathname, const char* dirname) {
         return -1;
     }
 
-    if (response == 0) {
+    if (response == -1) {
         errno = ENOENT;
 
         printf("SERVER: Devi prima richiedere di aprire il File!\n");
@@ -580,7 +571,7 @@ int closeFile(const char* pathname) {
     free(payload);
     free(header);
 
-    if (response == 0) {
+    if (response == -1) {
         errno = ENOENT;
         printf("SERVER: Devi prima richiedere di aprire il File!\n");
         return -1;

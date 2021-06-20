@@ -94,8 +94,6 @@ void *handle_connection(void *pipeHandleClient) {
 
     close(pipeTask[1]);
     free(packetHeader);
-
-    printf("VADO A SUICIDARMI\n");
     
     return NULL;
 }
