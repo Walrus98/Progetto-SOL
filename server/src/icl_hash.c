@@ -17,7 +17,7 @@
 #include <assert.h>
 
 #include "../include/icl_hash.h"
-#include "../include/storage.h"
+#include "../include/server_storage.h"
 
 #include <limits.h>
 

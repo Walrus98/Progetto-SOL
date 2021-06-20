@@ -4,7 +4,7 @@
 #include <errno.h>
 
 #include "../include/server_config.h"
-#include "../include/storage.h"
+#include "../include/server_storage.h"
 #include "../include/server_network.h"
 
 int main(void) {

@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <pthread.h>
 
-#include "../include/storage.h"
+#include "../include/server_storage.h"
 #include "../include/pthread_utils.h"
 #include "../include/icl_hash.h"
 #include "../../core/include/list_utils.h"

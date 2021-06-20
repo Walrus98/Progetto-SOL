@@ -1,5 +1,5 @@
-#ifndef STORAGE_H
-#define STORAGE_H
+#ifndef SERVER_STORAGE_H
+#define SERVER_STORAGE_H
 
 typedef struct File {
     char *filePath;

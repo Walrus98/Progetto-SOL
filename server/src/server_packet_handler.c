@@ -11,7 +11,7 @@
 #include <sys/un.h>
 
 #include "../include/server_packet_handler.h"
-#include "../include/storage.h"
+#include "../include/server_storage.h"
 
 // - int openFile(const char* pathname, int flags)
 // Richiesta di apertura o di creazione di un file. La semantica della openFile dipende dai flags passati come secondo
