@@ -1,4 +1,4 @@
-ARGUMENT	= -f mysock -W messaggio2 -t 2000
+ARGUMENT	= -f mysock -W test/messaggio1 -t 2000
 # ARGUMENT	= -f mysock -r Makefile -d prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g

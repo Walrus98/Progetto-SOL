@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <limits.h>
 
 #include "../include/server_storage.h"
 #include "../include/pthread_utils.h"
@@ -21,14 +22,35 @@ static icl_hash_t *storage;
 static pthread_mutex_t STORAGE_LOCK = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t CAPACITY_LOCK = PTHREAD_MUTEX_INITIALIZER;
 
-int hash_compare(void *a, void *b) {
+// Funzione di Hash utilizzata con la mappa.
+#define BITS_IN_int     ( sizeof(int) * CHAR_BIT )
+#define THREE_QUARTERS  ((int) ((BITS_IN_int * 3) / 4))
+#define ONE_EIGHTH      ((int) (BITS_IN_int / 8))
+#define HIGH_BITS       ( ~((unsigned int)(~0) >> ONE_EIGHTH ))
+
+unsigned int hash_key(void* key) {
+    File *file = (File *) key;
+
+    char *datum = (char *) file->filePath;
+    unsigned int hash_value, i;
+
+    if(!datum) return 0;
+
+    for (hash_value = 0; *datum; ++datum) {
+        hash_value = (hash_value << ONE_EIGHTH) + *datum;
+        if ((i = hash_value & HIGH_BITS) != 0)
+            hash_value = (hash_value ^ (i >> THREE_QUARTERS)) & ~HIGH_BITS;
+    }
+    return (hash_value);
+}
+
+int hash_value(void *a, void *b) {
 
     File *file = (File *) a;
     // char *filePath = (char *) b;
     File *file2 = (File *) b;
 
     int res = strcmp(file->filePath, file2->filePath);
-
     return res == 0 ? 1 : 0;
 }
 
@@ -65,7 +87,7 @@ void create_storage(size_t fileCapacity, size_t storageCapacity) {
     STORAGE_CAPACITY = storageCapacity;
 
     // Creo una mappa che viene utilizzata per vedere quali su quali file gli utenti hanno eseguito la open  
-    storage = icl_hash_create(fileCapacity, NULL, hash_compare);
+    storage = icl_hash_create(fileCapacity, hash_key, hash_value);
 }
 
 int insert_file_storage(int fileDescriptor, char *filePath) {
@@ -222,18 +244,23 @@ File *get_file(char *filePath) {
 }
 
 void print_storage() {
-
+    
     for (int i = 0; i < storage->nbuckets; i++) {
         icl_entry_t *bucket = storage->buckets[i];
         icl_entry_t *curr;
         for (curr = bucket; curr != NULL; ) {
             File *file = (File *) curr->key;
             if (file != NULL) {
-                printf("%s -> ", file->filePath);
+                printf("\n==============================\n");
+                printf("Path: %s\n", file->filePath);
+                printf("Content: %s\n", file->fileContent);
+                printf("Size: %ld\n", *((size_t *) file->fileSize));
+                printf("Fifo: %d\n", *((int *) file->fifo));
+                printf("UsersList: ");
                 for (Node *usersList = curr->data; usersList != NULL; usersList = usersList->next) {
                     printf("%d ", *((int *) usersList->value));
                 }
-                printf("\n");
+                printf("\n==============================\n");
             }
             curr = curr->next;
         }
@@ -242,6 +269,8 @@ void print_storage() {
 
 void destroy_storage() {
     
+    print_storage();
+
     LOCK(&STORAGE_LOCK);
 
     for (int i = 0; i < storage->nbuckets; i++) {
@@ -297,8 +326,31 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
 }
 
 void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
-    return NULL;
+
+    File *file = get_file(filePath);
+
+    if (file == NULL) {
+        return NULL;
+    }
+
+    LOCK(file->fileLock);
+    
+    Node *usersList = icl_hash_find(storage, file);
+    if (!contains(usersList, &fileDescriptor)) {
+        UNLOCK(file->fileLock);
+        return NULL;
+    }
+
+    *bufferSize = sizeof(char) * strlen(file->fileContent) + 1;
+
+    char *content = (char *) malloc(*bufferSize);
+    strncpy(content, file->fileContent, *bufferSize);
+
+    UNLOCK(file->fileLock);
+
+    return content;
 }
+
 char *read_n_file(int nFiles, int *bufferSize) {
     return NULL;
 }
@@ -374,16 +426,7 @@ int close_file(int fileDescriptor, char *filePath) {
         return -1;
     }
     
-    int *test2 = malloc(sizeof(int));
-    *test2 = 2;
-    
-    int *test1 = malloc(sizeof(int));
-    *test1 = 33;
-
-    add_tail(&usersList, test2);
-    add_tail(&usersList, test1);
-
-    remove_value(&usersList, test1);
+    // remove_value(&usersList, test1);
 
     // Altrimenti rimuovo il valore dalla lista e libero la memoria
     // remove_value(&usersList, test1);
@@ -396,10 +439,39 @@ int close_file(int fileDescriptor, char *filePath) {
 }
 
 int remove_file(int fileDescriptor, char *filePath) {
-    return 0;
+    
+    // Cerco il file all'interno dello storage
+    File *file = get_file(filePath);
+
+    // Se il file non esiste, allora inserisco un nuovo file all'interno dello storage
+    if (file == NULL) {
+        return -1;
+    }
+
+    Node *usersList = icl_hash_find(storage, file);
+    if (!contains(usersList, &fileDescriptor)) {
+        UNLOCK(file->fileLock);
+        return -1;
+    }
+
+    return remove_file_storage(file);
 }
 
 void disconnect_client(int fileDescriptor) {
 
+    return;
+    
+    for (int i = 0; i < storage->nbuckets; i++) {
+        icl_entry_t *bucket = storage->buckets[i];
+        icl_entry_t *curr;
+        for (curr = bucket; curr != NULL; ) {
+            File *file = (File *) curr->key;
+            if (file != NULL) {
+                Node *usersList = (Node *) curr->data;
+                remove_value(&usersList, &fileDescriptor);
+                curr = curr->next;
+            }
+        }
+    }
 }
 

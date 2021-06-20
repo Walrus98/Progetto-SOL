@@ -27,7 +27,7 @@
 
 void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
 
-    int pathLength, contentLength, response, flagCreate, flagLock, n;
+    int pathLength, contentLength, response, flagCreate, flagLock;
     char *path;
 
     switch (packetID) {
@@ -40,7 +40,6 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\n", path);
 
-
             response = open_file(fileDescriptor, path, flagCreate, flagLock);
             write(fileDescriptor, &response, sizeof(int));
 
@@ -50,6 +49,8 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
         case READ_FILE:
             path = payload;
+            
+            printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\n", path);
 
             contentLength = 0;
             char *content = read_file(fileDescriptor, path, &contentLength);
@@ -73,16 +74,15 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             break;
 
         case READ_N_FILES:
-            n = *((int *) payload);
-            int bufferSize = 0;
+            // n = *((int *) payload);
+            // int bufferSize = 0;
 
-            char *test = read_n_file(n, &bufferSize);
+            // char *test = read_n_file(n, &bufferSize);
 
-            write(fileDescriptor, &bufferSize, sizeof(int));
-            printf("Dimensione Buffer Size %d\n", bufferSize);
-            write(fileDescriptor, test, bufferSize);
+            // write(fileDescriptor, &bufferSize, sizeof(int));
+            // write(fileDescriptor, test, bufferSize);
 
-            free(test);
+            // free(test);
 
             break;
 
@@ -119,24 +119,29 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             pathLength = *((int *) payload);
             path = payload + 4;
 
+            printf("SERVER: Ricevuta una richiesta di remove sul file \"%s\"\n", path);
+
             response = remove_file(fileDescriptor, path);
             
-            switch (response) {
-                case 1:
-                    write(fileDescriptor, "Remove eseguita con successo!", 100);
-                    break;
-                case 0:
-                    write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100);
-                    break;
-                case -1:
-                    write(fileDescriptor, "Per rimuovere il file devi prima settare il flag di Lock a 1!", 100);
-                    break;
-                default:
-                    break;
-            }
+            write(fileDescriptor, &response, sizeof(int));
+
+            // switch (response) {
+            //     case 1:
+            //         write(fileDescriptor, "Remove eseguita con successo!", 100);
+            //         break;
+            //     case 0:
+            //         write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100);
+            //         break;
+            //     case -1:
+            //         write(fileDescriptor, "Per rimuovere il file devi prima settare il flag di Lock a 1!", 100);
+            //         break;
+            //     default:
+            //         break;
+            // }
             break;
 
         default:
+            fprintf(stderr, "ERRORE: Ricevuta una richiesta inesistente!");
             break;       
     }
 
