@@ -56,10 +56,22 @@ static int fun_compare(void *a, void *b) {
 
 // Tempo in millisecondi utilizzato dal comando -t
 static int TIME = 0;
-// Direcotry utilizzata dal comando -d
+// Directory utilizzata dal comando -d
 static char *DIRNAME = NULL;
 
 int main(int argc, char *argv[]) {
+
+    // struct timespec abstime;
+    // clock_gettime(CLOCK_REALTIME, &abstime);
+    // abstime.tv_sec += 10;
+    // openConnection("mysock", 100, abstime);
+    // // openFile("messaggio2", O_CREATE);
+    // handle_write_files("messaggio2");
+    // handle_write_files("test/messaggio1");
+    // handle_remove_file("messaggio2");
+    // // closeFile("messaggio2");
+
+    // return 0;
 
     if (argc == 1) {
         fprintf(stderr, "\nNessun argomento passato per parametro! Digita -h per vedere i comandi disponibili.\n");

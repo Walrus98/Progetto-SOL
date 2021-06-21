@@ -22,6 +22,9 @@ static icl_hash_t *storage;
 static pthread_mutex_t STORAGE_LOCK = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t CAPACITY_LOCK = PTHREAD_MUTEX_INITIALIZER;
 
+
+static icl_entry_t *test;
+
 // Funzione di Hash utilizzata con la mappa.
 #define BITS_IN_int     ( sizeof(int) * CHAR_BIT )
 #define THREE_QUARTERS  ((int) ((BITS_IN_int * 3) / 4))
@@ -149,7 +152,7 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     *fd = fileDescriptor;
     add_tail(&usersList, fd);
         
-    icl_hash_insert(storage, newFile, usersList);
+    test = icl_hash_insert(storage, newFile, usersList);
     
     LOCK(&CAPACITY_LOCK);
     CURRENT_FILE_AMOUNT++;
@@ -260,7 +263,7 @@ void print_storage() {
                 for (Node *usersList = curr->data; usersList != NULL; usersList = usersList->next) {
                     printf("%d ", *((int *) usersList->value));
                 }
-                printf("\n==============================\n");
+                printf("\n==============================\n\n");
             }
             curr = curr->next;
         }
@@ -296,9 +299,21 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
     // Cerco il file all'interno dello storage
     File *file = get_file(filePath);
 
+    if (file == NULL && flagCreate == 0) {
+        print_storage();
+        return -1;
+    }
+
+    if (file != NULL && flagCreate == 1) {
+        print_storage();
+        return -1;
+    }
+
     // Se il file non esiste, allora inserisco un nuovo file all'interno dello storage
     if (file == NULL) {
         insert_file_storage(fileDescriptor, filePath);
+
+        print_storage();
         return 0;
     }
 
@@ -306,21 +321,25 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
     LOCK(file->fileLock);
 
     // Controllo la lista di utenti che hanno effettuato la open sul file
-    Node *usersList = icl_hash_find(storage, file);
+    Node **usersList = (Node **) icl_hash_find_pointer(storage, file);
 
     // Se l'utente ha già effettuato la open
-    if (contains(usersList, &fileDescriptor)) {
+    if (contains(*usersList, &fileDescriptor)) {
         // Lascio la lock e restituisco un messaggio di errore
         UNLOCK(file->fileLock);
+        
+        print_storage();
         return -1;
     }
 
     // Aggiungo il file descriptor dell'utente alla lista
     int *fd = (int *) malloc(sizeof(int));
     *fd = fileDescriptor;
-    add_tail(&usersList, fd);
+    add_tail(usersList, fd);
 
     UNLOCK(file->fileLock);
+
+    print_storage();
 
     return 0;
 }
@@ -347,6 +366,8 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
     strncpy(content, file->fileContent, *bufferSize);
 
     UNLOCK(file->fileLock);
+
+    print_storage();
 
     return content;
 }
@@ -399,6 +420,8 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
 
     UNLOCK(file->fileLock);
 
+    print_storage();
+
     return 0;
 }
 
@@ -416,24 +439,24 @@ int close_file(int fileDescriptor, char *filePath) {
     LOCK(file->fileLock);
 
     // Prendo la lista di utenti che hanno eseguito la open su quel file
-    Node *usersList = icl_hash_find(storage, file);
+    Node **usersList = (Node **) icl_hash_find_pointer(storage, file);    
 
     // Se l'utente non ha eseguito la open
     int *fd;
-    if ((fd = get_value(usersList, &fileDescriptor)) == NULL) {
+    if ((fd = get_value(*usersList, &fileDescriptor)) == NULL) {
         // Rilascio la lock e restituisco un mesaggio di errore
         UNLOCK(file->fileLock);
         return -1;
     }
-    
-    // remove_value(&usersList, test1);
 
     // Altrimenti rimuovo il valore dalla lista e libero la memoria
-    // remove_value(&usersList, test1);
-    // free(fd);
-
+    remove_value(usersList, fd);
+    free(fd);
+    
     // Rilascio la lock
     UNLOCK(file->fileLock);
+
+    print_storage();
 
     return 0;
 }
@@ -459,7 +482,7 @@ int remove_file(int fileDescriptor, char *filePath) {
 
 void disconnect_client(int fileDescriptor) {
 
-    return;
+    printf("SERVER: Disconnessione dell'utente %d\n", fileDescriptor);
     
     for (int i = 0; i < storage->nbuckets; i++) {
         icl_entry_t *bucket = storage->buckets[i];
@@ -467,11 +490,19 @@ void disconnect_client(int fileDescriptor) {
         for (curr = bucket; curr != NULL; ) {
             File *file = (File *) curr->key;
             if (file != NULL) {
-                Node *usersList = (Node *) curr->data;
-                remove_value(&usersList, &fileDescriptor);
-                curr = curr->next;
+                // Prendo la lista
+                Node **usersList = (Node **) &(curr->data);
+                // Prendo il puntatore al fd dell'utente disconnesso
+                int *fd = get_value(*usersList, &fileDescriptor);
+                // Rimuovo il nodo del fd
+                remove_value(usersList, &fileDescriptor);
+                // Libero la memoria
+                free(fd);
             }
+            curr = curr->next;
         }
     }
+
+    print_storage();
 }
 

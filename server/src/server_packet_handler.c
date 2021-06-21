@@ -50,7 +50,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
         case READ_FILE:
             path = payload;
             
-            printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\n", path);
+            printf("SERVER: Ricevuta una richiesta di read sul file \"%s\"\n", path);
 
             contentLength = 0;
             char *content = read_file(fileDescriptor, path, &contentLength);
@@ -108,7 +108,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             path = payload;
 
             printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\n", path);
-
+        
             response = close_file(fileDescriptor, path);
             write(fileDescriptor, &response, sizeof(int));
 
@@ -117,27 +117,14 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
         
         case REMOVE_FILE:
             pathLength = *((int *) payload);
-            path = payload + 4;
+            path = payload + sizeof(int);
 
             printf("SERVER: Ricevuta una richiesta di remove sul file \"%s\"\n", path);
 
             response = remove_file(fileDescriptor, path);
-            
             write(fileDescriptor, &response, sizeof(int));
 
-            // switch (response) {
-            //     case 1:
-            //         write(fileDescriptor, "Remove eseguita con successo!", 100);
-            //         break;
-            //     case 0:
-            //         write(fileDescriptor, "Devi prima eseguire la open su quel file!", 100);
-            //         break;
-            //     case -1:
-            //         write(fileDescriptor, "Per rimuovere il file devi prima settare il flag di Lock a 1!", 100);
-            //         break;
-            //     default:
-            //         break;
-            // }
+            // printf("SERVER: Ricevuta una richiesta di remove sul file \"%s\"\nSERVER: Risposta: %d\n", path, response); 
             break;
 
         default:

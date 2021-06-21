@@ -17,7 +17,6 @@
 #include <assert.h>
 
 #include "../include/icl_hash.h"
-#include "../include/server_storage.h"
 
 #include <limits.h>
 
@@ -102,6 +101,23 @@ icl_hash_create( int nbuckets, unsigned int (*hash_function)(void*), int (*hash_
  * @returns pointer to the data corresponding to the key.
  *   If the key was not found, returns NULL.
  */
+
+void **
+icl_hash_find_pointer(icl_hash_t *ht, void* key)
+{
+    icl_entry_t* curr;
+    unsigned int hash_val;
+
+    if(!ht || !key) return NULL;
+
+    hash_val = (* ht->hash_function)(key) % ht->nbuckets;
+
+    for (curr=ht->buckets[hash_val]; curr != NULL; curr=curr->next)
+        if ( ht->hash_key_compare(curr->key, key))
+            return &(curr->data);
+
+    return NULL;
+}
 
 void *
 icl_hash_find(icl_hash_t *ht, void* key)
@@ -210,6 +226,7 @@ icl_hash_update_insert(icl_hash_t *ht, void* key, void *data, void **olddata)
 
     return curr;
 }
+
 
 /**
  * Free one hash table entry located by key (key and data are freed using functions).

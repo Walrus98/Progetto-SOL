@@ -1,18 +1,13 @@
-ARGUMENT	= -f mysock -W test/messaggio1 -t 2000
+ARGUMENT	= -f mysock -W messaggio3 -t 2000
 # ARGUMENT	= -f mysock -r Makefile -d prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 
 TARGETS_CLIENT	= client_network.o client.o list_utils.o utils.o
 
-# TARGETS_CORE	= utils.o
-
-TARGETS_SERVER	= server.o server_config.o server_storage.o server_network.o								\
+TARGETS_SERVER	= server.o server_config.o server_storage.o server_network.o						\
 				server_network_dispatcher.o server_network_worker.o server_network_handler.o		\
 			 	server_signal_handler.o server_packet_handler.o utils.o list_utils.o icl_hash.o		\
-			
-
-# server_cache_handler.o server_cache_fifo.o server_storage.o 
 
 .PHONY: all clean $(TARGETS_SERVER) $(TARGETS_CLIENT)
 .SUFFIXES: .c .h .o
@@ -47,8 +42,6 @@ client_network.o:
 	$(CC) $(CFLAGS) -c client/src/client_network.c -o build/obj/client/$@
 client.o:
 	$(CC) $(CFLAGS) -c client/src/client.c -o build/obj/client/$@
-# list_utils_client.o:
-# 	$(CC) $(CFLAGS) -c client/src/list_utils_client.c -o build/obj/client/$@
 
 # ================================= CORE ==================================
 
@@ -68,18 +61,6 @@ server_config.o:
 
 server_storage.o:
 	$(CC) $(CFLAGS) -c -pthread server/src/server_storage.c -o build/obj/server/$@
-
-# server_storage.o:
-# 	$(CC) $(CFLAGS) -c server/src/server_storage.c -o build/obj/server/$@
-
-# server_cache_handler.o:
-# 	$(CC) $(CFLAGS) -pthread -c server/src/server_cache_handler.c -o build/obj/server/$@
-
-# server_cache_fifo.o:
-# 	$(CC) $(CFLAGS) -c server/src/server_cache_fifo.c -o build/obj/server/$@
-
-# list_utils.o:
-# 	$(CC) $(CFLAGS) -c server/src/list_utils.c -o build/obj/server/$@
 
 icl_hash.o:
 	$(CC) $(CFLAGS) -c server/src/icl_hash.c -o build/obj/server/$@

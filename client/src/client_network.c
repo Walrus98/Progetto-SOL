@@ -596,7 +596,7 @@ int removeFile(const char* pathname) {
     int byte;
     int id = REMOVE_FILE;
     int pathLength = strlen(absolutePath) + 1;
-    int payloadLength = pathLength;
+    int payloadLength = pathLength + sizeof(int);
 
     DEBUG(("===================================================\n"));
     DEBUG(("HEADER\n"));
@@ -633,15 +633,15 @@ int removeFile(const char* pathname) {
     free(payload);
     free(header);
 
-    if (response == 0) {
+    if (response == -1) {
         errno = ENOENT;
         printf("SERVER: Devi prima richiedere di aprire il File!\n");
-        return -1;
+        return response;
     }
     
     printf("SERVER: Remove eseguita con successo\n");
 
-    return 0;
+    return response;
 }
 
 
