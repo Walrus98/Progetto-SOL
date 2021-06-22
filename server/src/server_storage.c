@@ -17,6 +17,7 @@ static size_t STORAGE_CAPACITY;
 // Capacità corrente del server storage
 static size_t CURRENT_FILE_AMOUNT = 0;
 static size_t CURRENT_STORAGE_SIZE = 0;
+static int TIME_FIFO = 0;
 
 static icl_hash_t *storage;
 static pthread_mutex_t STORAGE_LOCK = PTHREAD_MUTEX_INITIALIZER;
@@ -63,7 +64,7 @@ void create_storage(size_t fileCapacity, size_t storageCapacity);
 // Inserisce un file all'interno dello storage
 int insert_file_storage(int fileDescriptor, char *filePath);
 // Rimuove il file dettato dalla politica di rimpiazzamento
-int replace_file_storage();
+int replace_file_storage(char *filePath);
 // Rimuove il file selezionato dalla mappa
 int remove_file_storage(File *fileToRemove);
 // Restituisco il file che ha come path quello passato per parametro
@@ -103,7 +104,7 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     if (CURRENT_FILE_AMOUNT + 1 > STORAGE_FILE_CAPACITY) {
         UNLOCK(&CAPACITY_LOCK);
         fprintf(stderr, "ATTENZIONE: È stato raggiunto il massimo numero di File nello Storage.\n");
-        replace_file_storage();
+        replace_file_storage(filePath);
     }
     UNLOCK(&CAPACITY_LOCK);
 
@@ -112,8 +113,9 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
         UNLOCK(&CAPACITY_LOCK);
         fprintf(stderr, "ATTENZIONE: È stata raggiunta la dimensione massima dello Storage.\n");
-        if (replace_file_storage() == -1) {
-            UNLOCK(&CAPACITY_LOCK);
+        if (replace_file_storage(filePath) == -1) {
+            // UNLOCK(&CAPACITY_LOCK);
+            UNLOCK(&STORAGE_LOCK)
             return -1;
         }
         LOCK(&CAPACITY_LOCK);
@@ -136,9 +138,8 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
 
     int *fifo = (int *) malloc(sizeof(int));
     
-    LOCK(&CAPACITY_LOCK);
-    *fifo = CURRENT_FILE_AMOUNT;
-    UNLOCK(&CAPACITY_LOCK);
+    *fifo = TIME_FIFO;
+    TIME_FIFO++;
 
     newFile->fifo = fifo;
 
@@ -164,7 +165,7 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     return 0;
 }
 
-int replace_file_storage() {
+int replace_file_storage(char *filePath) {
 
     int min = INT_MAX;  
     File *fileToRemove = NULL;
@@ -174,7 +175,11 @@ int replace_file_storage() {
         icl_entry_t *curr;
         for (curr = bucket; curr != NULL; ) {
             File *file = (File *) curr->key;
-            if (file != NULL && *(file->fifo) < min) {
+            if (file != NULL && *(file->fifo) < min && !strcmp(file->filePath, filePath) == 0) {
+
+                printf("MANZ %s\n", file->filePath); 
+                printf("MANZ %s\n", filePath); 
+
                 min = *(file->fifo);
                 fileToRemove = file;
             }
@@ -183,7 +188,7 @@ int replace_file_storage() {
     }
 
     if (fileToRemove == NULL) {
-        fprintf(stderr, "ATTENZIONE: Il file supera la dimensione totale del file storage!\n");
+        fprintf(stderr, "ATTENZIONE: Non è possibile rimuovere nessun altro file dallo storage, quindi la richiesta non viene eseguita!\n");
         return -1;
     }
     
@@ -311,12 +316,12 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
 
     if (file == NULL && flagCreate == 0) {
         print_storage();
-        return -1;
+        return -2;
     }
 
     if (file != NULL && flagCreate == 1) {
         print_storage();
-        return -1;
+        return -2;
     }
 
     // Se il file non esiste, allora inserisco un nuovo file all'interno dello storage
@@ -405,6 +410,25 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
     LOCK(&CAPACITY_LOCK);
     CURRENT_STORAGE_SIZE -= *(file->fileSize);
     UNLOCK(&CAPACITY_LOCK);
+
+    size_t fileSize = strlen(file->filePath) + 1 + strlen(fileContent) + 1;    
+    
+    LOCK(&CAPACITY_LOCK);
+    while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
+        UNLOCK(&CAPACITY_LOCK);
+        fprintf(stderr, "ATTENZIONE: È stata raggiunta la dimensione massima dello Storage.\n");
+        if (replace_file_storage(filePath) == -1) {
+
+            LOCK(&CAPACITY_LOCK);
+            CURRENT_STORAGE_SIZE += *(file->fileSize);
+            UNLOCK(&CAPACITY_LOCK);
+
+            UNLOCK(file->fileLock);
+            return -1;
+        }
+        LOCK(&CAPACITY_LOCK);
+    }         
+    UNLOCK(&CAPACITY_LOCK);
     
     free(file->fileContent);
     free(file->fileSize);
@@ -413,25 +437,13 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
     strncpy(content, fileContent, strlen(fileContent) + 1);
     file->fileContent = content;
 
-    size_t fileSize = strlen(file->filePath) + 1 + strlen(fileContent) + 1;
     size_t *size = malloc(sizeof(size_t));
     *size = fileSize;
 
     file->fileSize = size;
-    
+
     LOCK(&CAPACITY_LOCK);
-    while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
-        UNLOCK(&CAPACITY_LOCK);
-        fprintf(stderr, "ATTENZIONE: È stata raggiunta la dimensione massima dello Storage.\n");
-        if (replace_file_storage() == -1) {
-            UNLOCK(file->fileLock);
-            return -1;
-        }
-        LOCK(&CAPACITY_LOCK);
-    }     
-    
     CURRENT_STORAGE_SIZE += *(file->fileSize);
-    
     UNLOCK(&CAPACITY_LOCK);
 
     UNLOCK(file->fileLock);

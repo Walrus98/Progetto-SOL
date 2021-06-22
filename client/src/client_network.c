@@ -182,6 +182,9 @@ int openFile(const char* pathname, int flags) {
         case -1:
             printf("SERVER: Impossibile eseguire open multiple sullo stesso file!\n");
             break;
+        case -2:
+            printf("SERVER: Impossibile eseguire open poichè i flag passati non sono validi!\n");
+            break;
         default:
             break;
     }
