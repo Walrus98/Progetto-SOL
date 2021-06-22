@@ -22,9 +22,6 @@ static icl_hash_t *storage;
 static pthread_mutex_t STORAGE_LOCK = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t CAPACITY_LOCK = PTHREAD_MUTEX_INITIALIZER;
 
-
-static icl_entry_t *test;
-
 // Funzione di Hash utilizzata con la mappa.
 #define BITS_IN_int     ( sizeof(int) * CHAR_BIT )
 #define THREE_QUARTERS  ((int) ((BITS_IN_int * 3) / 4))
@@ -66,7 +63,7 @@ void create_storage(size_t fileCapacity, size_t storageCapacity);
 // Inserisce un file all'interno dello storage
 int insert_file_storage(int fileDescriptor, char *filePath);
 // Rimuove il file dettato dalla politica di rimpiazzamento
-void replace_file_storage();
+int replace_file_storage();
 // Rimuove il file selezionato dalla mappa
 int remove_file_storage(File *fileToRemove);
 // Restituisco il file che ha come path quello passato per parametro
@@ -105,7 +102,7 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     LOCK(&CAPACITY_LOCK);
     if (CURRENT_FILE_AMOUNT + 1 > STORAGE_FILE_CAPACITY) {
         UNLOCK(&CAPACITY_LOCK);
-        fprintf(stderr, "ATTENZIONE: raggiunta il massimo numero di File nello Storage.\n");
+        fprintf(stderr, "ATTENZIONE: È stato raggiunto il massimo numero di File nello Storage.\n");
         replace_file_storage();
     }
     UNLOCK(&CAPACITY_LOCK);
@@ -114,8 +111,11 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     LOCK(&CAPACITY_LOCK);
     while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
         UNLOCK(&CAPACITY_LOCK);
-        fprintf(stderr, "ATTENZIONE: raggiunta la dimensione massima dello Storage.\n");
-        replace_file_storage(); 
+        fprintf(stderr, "ATTENZIONE: È stata raggiunta la dimensione massima dello Storage.\n");
+        if (replace_file_storage() == -1) {
+            UNLOCK(&CAPACITY_LOCK);
+            return -1;
+        }
         LOCK(&CAPACITY_LOCK);
     }     
     UNLOCK(&CAPACITY_LOCK);
@@ -152,7 +152,7 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     *fd = fileDescriptor;
     add_tail(&usersList, fd);
         
-    test = icl_hash_insert(storage, newFile, usersList);
+    icl_hash_insert(storage, newFile, usersList);
     
     LOCK(&CAPACITY_LOCK);
     CURRENT_FILE_AMOUNT++;
@@ -164,27 +164,34 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     return 0;
 }
 
-void replace_file_storage() {
+int replace_file_storage() {
 
-    int min = 0;  
-    File *fileToRemove;
+    int min = INT_MAX;  
+    File *fileToRemove = NULL;
     
     for (int i = 0; i < storage->nbuckets; i++) {
         icl_entry_t *bucket = storage->buckets[i];
         icl_entry_t *curr;
         for (curr = bucket; curr != NULL; ) {
             File *file = (File *) curr->key;
-            if (file != NULL && min < *(file->fifo)) {
+            if (file != NULL && *(file->fifo) < min) {
                 min = *(file->fifo);
                 fileToRemove = file;
             }
             curr = curr->next;
         }
     }
+
+    if (fileToRemove == NULL) {
+        fprintf(stderr, "ATTENZIONE: Il file supera la dimensione totale del file storage!\n");
+        return -1;
+    }
     
     fprintf(stderr, "ATTENZIONE: %s è stato rimosso dallo Storage!\n", fileToRemove->filePath);        
 
     remove_file_storage(fileToRemove);
+
+    return 0;
 }
 
 
@@ -201,9 +208,9 @@ int remove_file_storage(File *fileToRemove) {
     CURRENT_FILE_AMOUNT--;
     UNLOCK(&CAPACITY_LOCK);
 
-    Node* usersList = icl_hash_find(storage, fileToRemove);
+    Node **usersList = (Node **) icl_hash_find_pointer(storage, fileToRemove);
 
-    for (Node *currentList = usersList; currentList != NULL; ) {
+    for (Node *currentList = *usersList; currentList != NULL; ) {
         Node *temp = currentList;
         currentList = currentList->next;
         
@@ -247,6 +254,9 @@ File *get_file(char *filePath) {
 }
 
 void print_storage() {
+
+    printf("FILE AMOUNT %ld\n", CURRENT_FILE_AMOUNT);
+    printf("STORAGE SIZE %ld\n", CURRENT_STORAGE_SIZE);
     
     for (int i = 0; i < storage->nbuckets; i++) {
         icl_entry_t *bucket = storage->buckets[i];
@@ -412,11 +422,15 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
     LOCK(&CAPACITY_LOCK);
     while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
         UNLOCK(&CAPACITY_LOCK);
-        fprintf(stderr, "ATTENZIONE: raggiunta la dimensione massima dello Storage.\n");
+        fprintf(stderr, "ATTENZIONE: È stata raggiunta la dimensione massima dello Storage.\n");
         replace_file_storage(); 
         LOCK(&CAPACITY_LOCK);
     }     
+    
+    CURRENT_STORAGE_SIZE += *(file->fileSize);
+    
     UNLOCK(&CAPACITY_LOCK);
+
 
     UNLOCK(file->fileLock);
 
@@ -424,6 +438,7 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
 
     return 0;
 }
+
 
 int close_file(int fileDescriptor, char *filePath) {
 

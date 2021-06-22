@@ -1,5 +1,5 @@
-storage_file_capacity: 2
-storage_capacity: 12000
+storage_file_capacity: 10
+storage_capacity: 10000
 storage_policy: 0
 thread_workers_amount: 5
 socket_file_name: tmp

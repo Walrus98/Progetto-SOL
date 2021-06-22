@@ -65,11 +65,15 @@ int main(int argc, char *argv[]) {
     // clock_gettime(CLOCK_REALTIME, &abstime);
     // abstime.tv_sec += 10;
     // openConnection("mysock", 100, abstime);
-    // // openFile("messaggio2", O_CREATE);
+    // openFile("messaggio2", O_CREATE);
+    // openFile("test/messaggio1", O_CREATE);
+    // openFile("messaggio3", O_CREATE);
+    // sleep(5);
+    // openFile("messaggio3", O_CREATE);
     // handle_write_files("messaggio2");
     // handle_write_files("test/messaggio1");
     // handle_remove_file("messaggio2");
-    // // closeFile("messaggio2");
+    // closeFile("messaggio2");
 
     // return 0;
 

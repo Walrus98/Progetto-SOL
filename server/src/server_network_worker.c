@@ -10,20 +10,19 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-
 #include "../include/server_network_worker.h"
 #include "../include/server_network_handler.h"
 #include "../include/server_packet_handler.h"
 
-#define READ_PACKET(buffer, pipeTask, fd, size)     \
-    nread = readn(fd, buffer, size);                     \
-    if (nread == 0 || nread == -1)                       \
-    {                                                    \
-        int connectedClients = -1;                       \
-        write(pipeTask, &connectedClients, sizeof(int)); \
-        handleDisconnect(fd);                            \
-        close(fd);                                       \
-        continue;                                        \
+#define READ_PACKET(buffer, pipeTask, fd, size)             \
+    nread = readn(fd, buffer, size);                        \
+    if (nread == 0 || nread == -1)                          \
+    {                                                       \
+        int connectedClients = -1;                          \
+        write(pipeTask, &connectedClients, sizeof(int));    \
+        handleDisconnect(fd);                               \
+        close(fd);                                          \
+        continue;                                           \
     }
 
 /* Read "n" bytes from a descriptor */

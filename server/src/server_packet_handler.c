@@ -13,18 +13,6 @@
 #include "../include/server_packet_handler.h"
 #include "../include/server_storage.h"
 
-// - int openFile(const char* pathname, int flags)
-// Richiesta di apertura o di creazione di un file. La semantica della openFile dipende dai flags passati come secondo
-// argomento che possono essere O_CREATE ed O_LOCK. Se viene passato il flag O_CREATE ed il file esiste già
-// memorizzato nel server, oppure il file non esiste ed il flag O_CREATE non è stato specificato, viene ritornato un
-// errore. In caso di successo, il file viene sempre aperto in lettura e scrittura, ed in particolare le scritture possono
-// avvenire solo in append. Se viene passato il flag O_LOCK (eventualmente in OR con O_CREATE) il file viene
-// aperto e/o creato in modalità locked, che vuol dire che l’unico che può leggere o scrivere il file ‘pathname’ è il
-// processo che lo ha aperto. Il flag O_LOCK può essere esplicitamente resettato utilizzando la chiamata unlockFile,
-// descritta di seguito.
-// Ritorna 0 in caso di successo, -1 in caso di fallimento, errno viene settato opportunamente.
-
-
 void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
 
     int pathLength, contentLength, response, flagCreate, flagLock;
@@ -42,9 +30,6 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = open_file(fileDescriptor, path, flagCreate, flagLock);
             write(fileDescriptor, &response, sizeof(int));
-
-            // printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
-            
             break;
 
         case READ_FILE:
@@ -96,8 +81,6 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = write_file(fileDescriptor, path, content);
             write(fileDescriptor, &response, sizeof(int));
-           
-            // printf("SERVER: Ricevuta una richiesta di write sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
             break;
 
         case APPEND_TO_FILE:
@@ -110,9 +93,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\n", path);
         
             response = close_file(fileDescriptor, path);
-            write(fileDescriptor, &response, sizeof(int));
-
-            // printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\nSERVER: Risposta: %d\n", path, response);
+            write(fileDescriptor, &response, sizeof(int)); 
             break;
         
         case REMOVE_FILE:
@@ -123,8 +104,6 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = remove_file(fileDescriptor, path);
             write(fileDescriptor, &response, sizeof(int));
-
-            // printf("SERVER: Ricevuta una richiesta di remove sul file \"%s\"\nSERVER: Risposta: %d\n", path, response); 
             break;
 
         default:
