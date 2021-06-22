@@ -423,14 +423,16 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
     while (CURRENT_STORAGE_SIZE + fileSize > STORAGE_CAPACITY) {
         UNLOCK(&CAPACITY_LOCK);
         fprintf(stderr, "ATTENZIONE: È stata raggiunta la dimensione massima dello Storage.\n");
-        replace_file_storage(); 
+        if (replace_file_storage() == -1) {
+            UNLOCK(file->fileLock);
+            return -1;
+        }
         LOCK(&CAPACITY_LOCK);
     }     
     
     CURRENT_STORAGE_SIZE += *(file->fileSize);
     
     UNLOCK(&CAPACITY_LOCK);
-
 
     UNLOCK(file->fileLock);
 
