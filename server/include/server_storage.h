@@ -30,4 +30,6 @@ void destroy_storage();
 
 void print_storage();
 
+void print_storage_debug();
+
 #endif

@@ -65,8 +65,6 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             buffer = read_n_file(nFiles, &bufferSize);
 
-            printf("BUFFER SIZE RICEVUTO %d\n", bufferSize);
-
             write(fileDescriptor, &bufferSize, sizeof(int));
             if (buffer != NULL) {
                 write(fileDescriptor, buffer, bufferSize);

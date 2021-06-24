@@ -315,6 +315,10 @@ int readNFiles(int N, const char* dirname) {
 
     if (packetSize == 0) {
         printf("SERVER: Impossibile eseguire la readN perché non ci sono file caricati sul server.\n");
+        
+        free(headerResponse);
+        free(payload);
+        free(header);
         return -1;
     }
 

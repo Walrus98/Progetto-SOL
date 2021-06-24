@@ -55,6 +55,32 @@ static inline int readn(long fd, void *buf, size_t size) {
     return size;
 }
 
+/** Evita scritture parziali
+ *
+ *   \retval -1   errore (errno settato)
+ *   \retval  0   se durante la scrittura la write ritorna 0
+ *   \retval  1   se la scrittura termina con successo
+ */
+static inline int writen(long fd, void *buf, size_t size) {
+    size_t left = size;
+    int r;
+    char *bufptr = (char *) buf;
+    while (left > 0) {
+        if ((r = write((int)fd, bufptr, left)) == -1) {
+            if (errno == EINTR)
+                continue;
+            return -1;
+        }
+        // EOF
+        if (r == 0) {
+            return 0;
+        }
+        left -= r;
+        bufptr += r;
+    }
+    return 1;
+}
+
 void *handle_connection(void *pipeHandleClient) {
 
     int *pipeTask = (int *) pipeHandleClient;
@@ -96,27 +122,3 @@ void *handle_connection(void *pipeHandleClient) {
     
     return NULL;
 }
-
-
-
-// /* Write "n" bytes to a descriptor */
-// ssize_t writen(int fd, void *ptr, size_t n) {
-//     size_t nleft;
-//     ssize_t nwritten;
-
-//     nleft = n;
-//     while (nleft > 0) {
-//         if ((nwritten = write(fd, ptr, nleft)) < 0) {
-//             if (nleft == n)
-//                 return -1; /* error, return -1 */
-//             else
-//                 break; /* error, return amount written so far */
-//         }
-//         else if (nwritten == 0)
-//             break;
-//         nleft -= nwritten;
-//         ptr += nwritten;
-//     }
-//     return (n - nleft); /* return >= 0 */
-// }
-

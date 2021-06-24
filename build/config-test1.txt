@@ -1,5 +1,4 @@
-storage_file_capacity: 10000
-storage_capacity: 10000
-storage_policy: 0
-thread_workers_amount: 4
-socket_file_name: tmp
+storage_file_capacity:10000
+storage_capacity:128
+thread_workers_amount:1
+socket_file_path:temp/mysock

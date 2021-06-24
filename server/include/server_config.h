@@ -6,7 +6,7 @@ size_t STORAGE_FILE_CAPACITY;
 size_t STORAGE_CAPACITY;
 int REPLACEMENT_POLICY;
 size_t THREAD_WORKERS_AMOUNT;
-char *SOCKET_FILE_NAME;
+char *SOCKET_FILE_PATH;
 
 // Legge e parsa il file config.txt
 void get_file_config();

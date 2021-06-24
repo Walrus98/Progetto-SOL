@@ -9,6 +9,7 @@
 #include "../include/pthread_utils.h"
 #include "../include/icl_hash.h"
 #include "../../core/include/list_utils.h"
+#include "../../core/include/utils.h"
 
 // Capacità massima del server storage
 static size_t STORAGE_FILE_CAPACITY;
@@ -18,10 +19,13 @@ static size_t STORAGE_CAPACITY;
 static size_t CURRENT_FILE_AMOUNT = 0;
 static size_t CURRENT_STORAGE_SIZE = 0;
 static int TIME_FIFO = 0;
+static size_t STORAGE_SIZE_MAX = 0;
+static int REPLACEMENT_FREQUENCY = 0;
 
 static icl_hash_t *storage;
 static pthread_mutex_t STORAGE_LOCK = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t CAPACITY_LOCK = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t REPLACEMENT_FREQUENCY_LOCK = PTHREAD_MUTEX_INITIALIZER;
 
 // Funzione di Hash utilizzata con la mappa.
 #define BITS_IN_int     ( sizeof(int) * CHAR_BIT )
@@ -69,8 +73,12 @@ int replace_file_storage(char *filePath);
 int remove_file_storage(File *fileToRemove);
 // Restituisco il file che ha come path quello passato per parametro
 File *get_file(char *filePath);
+// Stampo la mappa in modalità debug
+void print_storage_debug();
 // Stampo la mappa
 void print_storage();
+// Stampa le statistiche del server
+void print_stats();
 // Eseguo la free della struttura dati
 void destroy_storage();
 
@@ -158,6 +166,7 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
     LOCK(&CAPACITY_LOCK);
     CURRENT_FILE_AMOUNT++;
     CURRENT_STORAGE_SIZE += *(newFile->fileSize);
+    if (CURRENT_STORAGE_SIZE > STORAGE_SIZE_MAX) STORAGE_SIZE_MAX = CURRENT_STORAGE_SIZE;
     UNLOCK(&CAPACITY_LOCK);
     
     UNLOCK(&STORAGE_LOCK);
@@ -166,6 +175,10 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
 }
 
 int replace_file_storage(char *filePath) {
+
+    LOCK(&REPLACEMENT_FREQUENCY_LOCK);
+    REPLACEMENT_FREQUENCY++;
+    UNLOCK(&REPLACEMENT_FREQUENCY_LOCK);
 
     int min = INT_MAX;  
     File *fileToRemove = NULL;
@@ -254,10 +267,11 @@ File *get_file(char *filePath) {
     return NULL;
 }
 
-void print_storage() {
+void print_storage_debug() {
 
-    printf("FILE AMOUNT %ld\n", CURRENT_FILE_AMOUNT);
-    printf("STORAGE SIZE %ld\n", CURRENT_STORAGE_SIZE);
+    DEBUG(("==============================\n"));
+    DEBUG(("FILE AMOUNT %ld\n", CURRENT_FILE_AMOUNT));
+    DEBUG(("STORAGE SIZE %ld\n\n", CURRENT_STORAGE_SIZE));
     
     for (int i = 0; i < storage->nbuckets; i++) {
         icl_entry_t *bucket = storage->buckets[i];
@@ -265,25 +279,52 @@ void print_storage() {
         for (curr = bucket; curr != NULL; ) {
             File *file = (File *) curr->key;
             if (file != NULL) {
-                printf("\n==============================\n");
-                printf("Path: %s\n", file->filePath);
-                printf("Content: %s\n", file->fileContent);
-                printf("Size: %ld\n", *((size_t *) file->fileSize));
-                printf("Fifo: %d\n", *((int *) file->fifo));
-                printf("UsersList: ");
+                DEBUG(("Path: %s\n", file->filePath));
+                DEBUG(("Content: %s\n", file->fileContent));
+                DEBUG(("Size: %ld\n", *((size_t *) file->fileSize)));
+                DEBUG(("Fifo: %d\n", *((int *) file->fifo)));
+                DEBUG(("UsersList:\n"));
                 for (Node *usersList = curr->data; usersList != NULL; usersList = usersList->next) {
-                    printf("%d ", *((int *) usersList->value));
+                    DEBUG(("%d \n", *((int *) usersList->value)));
                 }
-                printf("\n==============================\n\n");
+                DEBUG(("\n"));
             }
             curr = curr->next;
         }
     }
+    DEBUG(("==============================\n\n"));
+}
+
+
+void print_storage() {
+    
+    for (int i = 0; i < storage->nbuckets; i++) {
+        icl_entry_t *bucket = storage->buckets[i];
+        icl_entry_t *curr;
+        for (curr = bucket; curr != NULL; ) {
+            File *file = (File *) curr->key;
+            if (file != NULL) {
+                printf("SERVER: %s\n", file->filePath);
+            }
+            curr = curr->next;
+        }
+    }
+    DEBUG(("==============================\n\n"));
+}
+
+void print_stats() {
+    printf("\n");
+    printf("SERVER: Numero massimo di file memorizzati: %d\n", TIME_FIFO);
+    printf("SERVER: Dimensione massima in MBytes raggiunta: %f MB\n", (float) STORAGE_SIZE_MAX / 1000 / 1000);
+    printf("SERVER: Numero di volte in cui l'algoritmo di rimpiazzamento è stato eseguito: %d\n", REPLACEMENT_FREQUENCY);
+    printf("SERVER: File contenuti nello storage:\n");
+    print_storage();
 }
 
 void destroy_storage() {
-    
-    print_storage();
+
+    print_storage_debug();
+    print_stats();
 
     LOCK(&STORAGE_LOCK);
 
@@ -311,12 +352,12 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
     File *file = get_file(filePath);
 
     if (file == NULL && flagCreate == 0) {
-        print_storage();
+        print_storage_debug();
         return -2;
     }
 
     if (file != NULL && flagCreate == 1) {
-        print_storage();
+        print_storage_debug();
         return -2;
     }
 
@@ -324,7 +365,7 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
     if (file == NULL) {
         insert_file_storage(fileDescriptor, filePath);
 
-        print_storage();
+        print_storage_debug();
         return 0;
     }
 
@@ -339,7 +380,7 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
         // Lascio la lock e restituisco un messaggio di errore
         UNLOCK(file->fileLock);
         
-        print_storage();
+        print_storage_debug();
         return -1;
     }
 
@@ -350,7 +391,7 @@ int open_file(int fileDescriptor, char *filePath, int flagCreate, int flagLock) 
 
     UNLOCK(file->fileLock);
 
-    print_storage();
+    print_storage_debug();
 
     return 0;
 }
@@ -378,7 +419,7 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
 
     UNLOCK(file->fileLock);
 
-    print_storage();
+    print_storage_debug();
 
     return content;
 }
@@ -419,6 +460,8 @@ char *read_n_file(int nFiles, int *bufferSize) {
     *bufferSize += sizeof(int);
 
     char *buffer = (char *) malloc(*bufferSize);
+    memset(buffer, 0, *bufferSize);
+
     char *currentBuffer = buffer;
 
     memcpy(buffer, &nFiles, sizeof(int));
@@ -491,6 +534,7 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
 
             LOCK(&CAPACITY_LOCK);
             CURRENT_STORAGE_SIZE += *(file->fileSize);
+            if (CURRENT_STORAGE_SIZE > STORAGE_SIZE_MAX) STORAGE_SIZE_MAX = CURRENT_STORAGE_SIZE;
             UNLOCK(&CAPACITY_LOCK);
 
             UNLOCK(file->fileLock);
@@ -514,11 +558,12 @@ int write_file(int fileDescriptor, char *filePath, char *fileContent) {
 
     LOCK(&CAPACITY_LOCK);
     CURRENT_STORAGE_SIZE += *(file->fileSize);
+    if (CURRENT_STORAGE_SIZE > STORAGE_SIZE_MAX) STORAGE_SIZE_MAX = CURRENT_STORAGE_SIZE;
     UNLOCK(&CAPACITY_LOCK);
 
     UNLOCK(file->fileLock);
 
-    print_storage();
+    print_storage_debug();
 
     return 0;
 }
@@ -555,7 +600,7 @@ int close_file(int fileDescriptor, char *filePath) {
     // Rilascio la lock
     UNLOCK(file->fileLock);
 
-    print_storage();
+    print_storage_debug();
 
     return 0;
 }
@@ -602,6 +647,6 @@ void disconnect_client(int fileDescriptor) {
         }
     }
 
-    print_storage();
+    print_storage_debug();
 }
 

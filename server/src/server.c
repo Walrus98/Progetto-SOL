@@ -6,6 +6,9 @@
 #include "../include/server_config.h"
 #include "../include/server_storage.h"
 #include "../include/server_network.h"
+#include "../../core/include/utils.h"
+
+int DEBUG_ENABLE = 0;
 
 int main(void) {
 
@@ -21,6 +24,8 @@ int main(void) {
     create_connection(THREAD_WORKERS_AMOUNT);
 
     destroy_storage();
+
+    free(SOCKET_FILE_PATH);
 
     printf("\n");
       

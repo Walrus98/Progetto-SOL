@@ -11,10 +11,9 @@
 
 #include "../include/server_network_dispatcher.h"
 #include "../include/server_network_handler.h"
+#include "../include/server_config.h"
 
 #define UNIX_PATH_MAX 108 
-#define SOCKNAME "temp/mysock"
-
 
 static int update(fd_set set, int fd_max) {
     for (int i = fd_max; i >= 0; i--) {
@@ -42,7 +41,8 @@ void *dispatch_connection(void *dispatcherArgument) {
 
     // Creo la struct del socket e assegno proprietà
     struct sockaddr_un sa; 
-    strncpy(sa.sun_path, SOCKNAME, UNIX_PATH_MAX);
+
+    strncpy(sa.sun_path, SOCKET_FILE_PATH, UNIX_PATH_MAX);
     sa.sun_family = AF_UNIX;    
 
     // Creo il socket
