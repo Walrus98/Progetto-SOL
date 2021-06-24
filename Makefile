@@ -1,4 +1,4 @@
-ARGUMENT	= -f mysock -w /home/walrus/ -t 2000
+ARGUMENT	= -f temp/mysock -w test/ -R 2 -t 5000
 # ARGUMENT	= -f mysock -r Makefile -d prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g
@@ -9,18 +9,18 @@ TARGETS_SERVER	= server.o server_config.o server_storage.o server_network.o					
 				server_network_dispatcher.o server_network_worker.o server_network_handler.o		\
 			 	server_signal_handler.o server_packet_handler.o utils.o list_utils.o icl_hash.o		\
 
-.PHONY: all clean $(TARGETS_SERVER) $(TARGETS_CLIENT)
+.PHONY: all clear $(TARGETS_SERVER) $(TARGETS_CLIENT)
 .SUFFIXES: .c .h .o
 
 all: build-client build-server clear
-	-rm mysock
+	-rm temp/mysock
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
 build-client: $(TARGETS_CLIENT)
 	$(CC) $(CFLAGS) build/obj/client/*.o build/obj/core/*.o -o build/client
 	
 build-server: $(TARGETS_SERVER)
-	-rm mysock
+	-rm temp/mysock
 	$(CC) $(CFLAGS) -pthread build/obj/server/*.o build/obj/core/*.o -o build/server
 
 clear:
@@ -35,6 +35,34 @@ client: build-client
 server: build-server
 	clear
 	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/server
+
+# ================================= TEST1 =================================
+
+test1: build-client build-server-test1 clear
+	-rm temp/mysock
+	cp -r * /mnt/d/Desktop/Progetto-SOL/
+
+build-server-test1: $(TARGETS_SERVER)
+	-rm temp/mysock
+	$(CC) $(CFLAGS) -DCONFIG_PATH=../build/config-test1.txt -pthread build/obj/server/*.o build/obj/core/*.o -o build/server-test1
+
+server-test1: build-server-test1
+	clear
+	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/server-test1
+
+# ================================= TEST2 =================================
+
+test2: build-client build-server-test2 clear
+	-rm temp/mysock
+	cp -r * /mnt/d/Desktop/Progetto-SOL/
+
+build-server-test2: $(TARGETS_SERVER)
+	-rm temp/mysock
+	$(CC) $(CFLAGS) -DCONFIG_PATH=build/config-test2.txt -pthread build/obj/server/*.o build/obj/core/*.o -o build/server-test2
+
+server-test2: build-server-test2
+	clear
+	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/server-test2
 
 # ================================= CLIENT =================================
 
@@ -99,5 +127,5 @@ server_packet_handler.o:
 # test:
 # 	./a.out input.txt output.txt
 
-# clean:
+# clear:
 # 	-rm a.out

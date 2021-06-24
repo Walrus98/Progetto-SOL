@@ -16,7 +16,6 @@
 
 #define UNIX_PATH_MAX 108 
 #define BUFFER_RESPONSE_SIZE 100
-// #define PATH_SIZE 1024
 
 static int SERVER_SOCKET = -1;
 
@@ -291,6 +290,8 @@ int readFile(const char* pathname, void** buf, size_t* size) {
  **/
 int readNFiles(int N, const char* dirname) {
 
+    printf("CLIENT: Invio una readN di %d files.\n", N);
+
     int id = READ_N_FILES;
     int payloadLength = sizeof(int);
 
@@ -312,14 +313,17 @@ int readNFiles(int N, const char* dirname) {
     read(SERVER_SOCKET, headerResponse,  sizeof(int));
     int packetSize = *((int *) headerResponse);
 
+    if (packetSize == 0) {
+        printf("SERVER: Impossibile eseguire la readN perché non ci sono file caricati sul server.\n");
+        return -1;
+    }
+
     // Response Payload
     char *payloadResponse = (char *) malloc(sizeof(char) * packetSize);
 
     read(SERVER_SOCKET, payloadResponse, packetSize);    
 
     int filesAmount =  *((int *) payloadResponse);
-
-    printf("%d\n", filesAmount);
 
     char *currentPosition = payloadResponse + sizeof(int);
     for (int i = 0; i < filesAmount; i++) {
@@ -338,11 +342,13 @@ int readNFiles(int N, const char* dirname) {
         strncpy(content, currentPosition, contentLength);
         currentPosition += contentLength;
 
-        printf("%d\n", pathLength);
-        printf("%d\n", contentLength);
+        printf("SERVER: File %d\n", i);
+        printf("SERVER: Path: \"%s\"\n", path);
+        printf("SERVER: Contenuto: \"%s\"\n\n", content);
 
-        printf("File Path: %s\n", path);
-        printf("File Content: %s\n", content);
+        if (dirname != NULL) {
+            write_file_directory(dirname, path, content);
+        }
 
         free(content);
         free(path);
@@ -352,6 +358,8 @@ int readNFiles(int N, const char* dirname) {
     free(headerResponse);
     free(payload);
     free(header);
+
+    printf("SERVER: Richiesta di readN eseguita con successo.\n");
 
     return 0;
 }
@@ -513,12 +521,12 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     free(payload);
     free(header);
 
-    if (response == 0) {
+    if (response == -1) {
         errno = ENOENT;
         printf("SERVER: Devi prima richiedere di aprire il File!\n");
     }
 
-    return response == 1 ? 0 : -1;
+    return response;
 }
 
 int lockFile(const char* pathname);
@@ -642,9 +650,41 @@ int removeFile(const char* pathname) {
         return response;
     }
     
-    printf("SERVER: Remove eseguita con successo\n");
+    printf("SERVER: Remove eseguita con successo.\n");
 
     return response;
+}
+
+void write_file_directory(const char *dirName, char *fileName, char *buffer) {
+
+    char *token = strtok(fileName, "/");
+    char *dir = NULL;
+    while (token) {
+        dir = token;
+        token = strtok(NULL, "/");
+    }
+
+    char directory[STRING_SIZE];
+    realpath(dirName, directory);
+
+    strcat(directory, "/");
+    strcat(directory, dir);
+
+    FILE *file = NULL;
+    if ((file = fopen(directory, "w")) == NULL) {
+        perror("ERRORE: Impossibile aprire il file");
+        return;
+    } 
+
+    if (fprintf(file, "%s", buffer) < 0) {
+        perror("ERRORE: Impossibile scrivere il file");
+        return;
+    }
+
+    if (fclose(file) != 0) {
+        perror("ERRORE: Impossibile chiudere il file");
+        return;
+    }
 }
 
 

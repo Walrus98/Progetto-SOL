@@ -8,13 +8,17 @@
 
 #define STRING_BUFFER_SIZE 512
 
+#ifndef CONFIG_PATH
+#define CONFIG_PATH "build/config.txt"
+#endif
+
 void get_file_config() {
 
     printf("Carico i file config:\n");
 
     // Prendo il descrittore del file config
     FILE *configFile = NULL;
-    if ((configFile = fopen("build/config.txt", "r")) == NULL) {
+    if ((configFile = fopen(CONFIG_PATH, "r")) == NULL) {
         perror("ERRORE: apertura del file config.txt");
         exit(errno);
     }

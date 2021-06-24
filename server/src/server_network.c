@@ -76,7 +76,7 @@ static pthread_t create_thread_signal(int pipeHandleConnection[], sigset_t block
     pthread_t threadSignalHandler;
 
     if (pthread_create(&threadSignalHandler, NULL, &handle_signal, &handlerArgument) != 0) {
-        fprintf(stderr, "ERRORE: impossibile creare il Thread Dispatcher\n");
+        fprintf(stderr, "ERRORE: impossibile creare il Thread Signal Handler\n");
         exit(EXIT_FAILURE);
     }
 

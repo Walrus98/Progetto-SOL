@@ -31,5 +31,6 @@ int closeFile(const char* pathname);
 
 int removeFile(const char* pathname);
 
+void write_file_directory(const char *dirName, char *fileName, char *buffer);
 
 #endif

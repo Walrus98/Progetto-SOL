@@ -13,10 +13,10 @@
 #include "../include/server_network_handler.h"
 
 #define UNIX_PATH_MAX 108 
-#define SOCKNAME "./mysock"
+#define SOCKNAME "temp/mysock"
 
 
-static int aggiorna(fd_set set, int fd_max) {
+static int update(fd_set set, int fd_max) {
     for (int i = fd_max; i >= 0; i--) {
         if (FD_ISSET(i, &set)) {
             return i;
@@ -160,7 +160,7 @@ void *dispatch_connection(void *dispatcherArgument) {
                     } else {
                         pushPacket(fd);
                         FD_CLR(fd, &set);
-                        fd_num = aggiorna(set, fd_num);
+                        fd_num = update(set, fd_num);
                     }
                 }
             }

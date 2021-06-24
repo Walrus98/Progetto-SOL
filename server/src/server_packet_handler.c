@@ -15,8 +15,8 @@
 
 void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
 
-    int pathLength, contentLength, response, flagCreate, flagLock;
-    char *path;
+    int pathLength, contentLength, response, flagCreate, flagLock, nFiles;
+    char *path, *buffer;
 
     switch (packetID) {
 
@@ -55,20 +55,23 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             } else {
                 write(fileDescriptor, &contentLength, sizeof(int));
             }
-
             break;
 
         case READ_N_FILES:
-            // n = *((int *) payload);
-            // int bufferSize = 0;
+            nFiles = *((int *) payload);
+            int bufferSize = 0;
 
-            // char *test = read_n_file(n, &bufferSize);
+            printf("SERVER: Ricevuta una richiesta di readN di %d file\n", nFiles);
 
-            // write(fileDescriptor, &bufferSize, sizeof(int));
-            // write(fileDescriptor, test, bufferSize);
+            buffer = read_n_file(nFiles, &bufferSize);
 
-            // free(test);
+            printf("BUFFER SIZE RICEVUTO %d\n", bufferSize);
 
+            write(fileDescriptor, &bufferSize, sizeof(int));
+            if (buffer != NULL) {
+                write(fileDescriptor, buffer, bufferSize);
+                free(buffer);
+            }
             break;
 
         case WRITE_FILE:
@@ -84,7 +87,15 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             break;
 
         case APPEND_TO_FILE:
-
+            pathLength = *((int *) payload);
+            path = payload + sizeof(int);
+            contentLength = *((int *) (payload + sizeof(int) + pathLength));
+            content = (payload + sizeof(int) + pathLength + sizeof(int));
+            
+            printf("SERVER: Ricevuta una richiesta di append sul file \"%s\"\n", path);
+            
+            response = write_file(fileDescriptor, path, content);
+            write(fileDescriptor, &response, sizeof(int));
             break;
 
         case CLOSE_FILE:       

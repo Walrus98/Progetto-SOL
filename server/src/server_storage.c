@@ -176,10 +176,6 @@ int replace_file_storage(char *filePath) {
         for (curr = bucket; curr != NULL; ) {
             File *file = (File *) curr->key;
             if (file != NULL && *(file->fifo) < min && !strcmp(file->filePath, filePath) == 0) {
-
-                printf("MANZ %s\n", file->filePath); 
-                printf("MANZ %s\n", filePath); 
-
                 min = *(file->fifo);
                 fileToRemove = file;
             }
@@ -388,7 +384,81 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
 }
 
 char *read_n_file(int nFiles, int *bufferSize) {
-    return NULL;
+
+    LOCK(&CAPACITY_LOCK);
+    if (nFiles > CURRENT_FILE_AMOUNT || nFiles <= 0) {
+        nFiles = CURRENT_FILE_AMOUNT;
+    }
+    UNLOCK(&CAPACITY_LOCK);
+
+    if (nFiles == 0) {
+        return NULL;
+    }
+
+    int pathLength = 0;
+    int contentLength = 0;
+    int cont = 0;
+
+    for (int i = 0; i < storage->nbuckets && cont < nFiles; i++) {
+        icl_entry_t *bucket = storage->buckets[i];
+        icl_entry_t *curr;
+        for (curr = bucket; curr != NULL && cont < nFiles; ) {
+            File *file = (File *) curr->key;
+            if (file != NULL) {
+                LOCK(file->fileLock);
+                pathLength += strlen(file->filePath) + 1;
+                contentLength += strlen(file->fileContent) + 1;
+                *bufferSize += pathLength + contentLength + (sizeof(int) * 2);
+                UNLOCK(file->fileLock);
+
+                cont++;
+            }
+            curr = curr->next;
+        }
+    }
+    *bufferSize += sizeof(int);
+
+    char *buffer = (char *) malloc(*bufferSize);
+    char *currentBuffer = buffer;
+
+    memcpy(buffer, &nFiles, sizeof(int));
+    buffer += sizeof(int);
+
+    cont = 0;
+    pathLength = 0;
+    contentLength = 0;
+
+    for (int i = 0; i < storage->nbuckets && cont < nFiles; i++) {
+        icl_entry_t *bucket = storage->buckets[i];
+        icl_entry_t *curr;
+        for (curr = bucket; curr != NULL && cont < nFiles; ) {
+            File *file = (File *) curr->key;
+            if (file != NULL) {
+                LOCK(file->fileLock);
+
+                pathLength = strlen(file->filePath) + 1;
+                memcpy(buffer, &pathLength, sizeof(int));
+                buffer += sizeof(int);
+
+                memcpy(buffer, file->filePath, pathLength);
+                buffer += pathLength;
+
+                contentLength = strlen(file->fileContent) + 1;
+                memcpy(buffer, &contentLength, sizeof(int));
+                buffer += sizeof(int);
+
+                memcpy(buffer, file->fileContent, contentLength);
+                buffer += contentLength;
+
+                UNLOCK(file->fileLock);
+
+                cont++;
+            }
+            curr = curr->next;
+        }
+    }
+
+    return currentBuffer;
 }
 
 int write_file(int fileDescriptor, char *filePath, char *fileContent) {

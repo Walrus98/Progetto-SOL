@@ -33,7 +33,7 @@ static void handle_help_commands();
 // Metodi aggiuntivi 
 static void check_attribute(char *path, int n);
 static void read_directories(char *dirName, int n);
-static void write_file_directory(char *dirName, char *fileName, char *buffer);
+// static void write_file_directory(char *dirName, char *fileName, char *buffer);
 
 // Lista di Argomenti
 static Node *argumentList;
@@ -110,7 +110,7 @@ void read_arguments(int argc, char *argv[]) {
                 printf("L'opzione '-%c' richiede un argomento\n", optopt);
                 break;
             // Se l'utente mi passa un comando inesistente
-            case '?': 
+            case '?':
                 printf("L'opzione '-%c' non è gestita. Digita -h per vedere i comandi disponibili.\n", optopt);
                 break;
             default:
@@ -483,8 +483,8 @@ void read_directories(char *dirName, int n) {
 
     struct dirent* file;
 
-    char buf[100];
-    if (getcwd(buf, 100)==NULL) {
+    char buf[STRING_SIZE];
+    if (getcwd(buf, STRING_SIZE) == NULL) {
         perror("ERRORE: Impossibile prendere la directory corrente"); 
         return;
     }
@@ -516,36 +516,3 @@ void read_directories(char *dirName, int n) {
     }    
 }
 
-void write_file_directory(char *dirName, char *fileName, char *buffer) {
-
-    char *token = strtok(fileName, "/");
-    char *test = NULL;
-    while (token) {
-        test = token;
-        token = strtok(NULL, ",");
-    }
-
-    char directory[STRING_SIZE];
-    realpath(dirName, directory);
-
-    strcat(directory, "/");
-    strcat(directory, test);
-
-    // printf("DIRECTORY %s\n", directory);
-
-    FILE *file = NULL;
-    if ((file = fopen(directory, "w")) == NULL) {
-        perror("ERRORE: Impossibile aprire il file");
-        return;
-    } 
-
-    if (fprintf(file, "%s", buffer) < 0) {
-        perror("ERRORE: Impossibile scrivere il file");
-        return;
-    }
-
-    if (fclose(file) != 0) {
-        perror("ERRORE: Impossibile chiudere il file");
-        return;
-    }
-}
