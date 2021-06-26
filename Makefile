@@ -9,10 +9,10 @@ TARGETS_SERVER	= server.o server_config.o server_storage.o server_network.o					
 				server_network_dispatcher.o server_network_worker.o server_network_handler.o		\
 			 	server_signal_handler.o server_packet_handler.o utils.o list_utils.o icl_hash.o		\
 
-.PHONY: all clear $(TARGETS_SERVER) $(TARGETS_CLIENT)
+.PHONY: all clean $(TARGETS_SERVER) $(TARGETS_CLIENT)
 .SUFFIXES: .c .h .o
 
-all: build-client build-server clear
+all: build-client build-server clean
 	-rm temp/mysock
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
@@ -23,7 +23,7 @@ build-server: $(TARGETS_SERVER)
 	-rm temp/mysock
 	$(CC) $(CFLAGS) -pthread build/obj/server/*.o build/obj/core/*.o -o build/server
 
-clear:
+clean:
 	rm -R build/obj/client/*.o
 	rm -R build/obj/server/*.o
 	rm -R build/obj/core/*.o
@@ -38,7 +38,7 @@ server: build-server
 
 # ================================= TEST1 =================================
 
-test1: build-client build-server-test1 clear
+test1: build-client build-server-test1 clean
 	-rm temp/mysock
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
@@ -52,7 +52,7 @@ server-test1: build-server-test1
 
 # ================================= TEST2 =================================
 
-test2: build-client build-server-test2 clear
+test2: build-client build-server-test2 clean
 	-rm temp/mysock
 	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
