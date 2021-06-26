@@ -1,4 +1,4 @@
-storage_file_capacity:10
-storage_capacity:1
-thread_workers_amount:4
+storage_file_capacity:100
+storage_capacity:2
+thread_workers_amount:10
 socket_file_path:temp/mysock

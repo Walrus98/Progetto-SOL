@@ -122,7 +122,6 @@ int insert_file_storage(int fileDescriptor, char *filePath) {
         UNLOCK(&CAPACITY_LOCK);
         fprintf(stderr, "ATTENZIONE: È stata raggiunta la dimensione massima dello Storage.\n");
         if (replace_file_storage(filePath) == -1) {
-            // UNLOCK(&CAPACITY_LOCK);
             UNLOCK(&STORAGE_LOCK)
             return -1;
         }
