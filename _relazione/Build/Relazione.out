@@ -4,5 +4,9 @@
 \BOOKMARK [1][-]{section.2}{Funzionamento del programma}{}% 4
 \BOOKMARK [2][-]{subsection.2.1}{API}{section.2}% 5
 \BOOKMARK [2][-]{subsection.2.2}{Protocollo}{section.2}% 6
-\BOOKMARK [2][-]{subsection.2.3}{Server}{section.2}% 7
-\BOOKMARK [2][-]{subsection.2.4}{Client}{section.2}% 8
+\BOOKMARK [1][-]{section.3}{Server}{}% 7
+\BOOKMARK [2][-]{subsection.3.1}{Config}{section.3}% 8
+\BOOKMARK [2][-]{subsection.3.2}{Struttura del Server}{section.3}% 9
+\BOOKMARK [2][-]{subsection.3.3}{Server Storage}{section.3}% 10
+\BOOKMARK [2][-]{subsection.3.4}{Lock}{section.3}% 11
+\BOOKMARK [1][-]{section.4}{Client}{}% 12

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (MiKTeX 20.11) (preloaded format=pdflatex 2020.11.28)  26 JUN 2021 19:41
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (MiKTeX 20.11) (preloaded format=pdflatex 2020.11.28)  27 JUN 2021 16:26
 entering extended mode
 **d:/Desktop/Relazione/Relazione.tex
 (d:/Desktop/Relazione/Relazione.tex
@@ -214,27 +214,38 @@ LaTeX Font Info:    External font `cmex10' loaded for size
  [1
 
 {C:/Users/samue/AppData/Local/MiKTeX/pdftex/config/pdftex.map}] [2]
-<./images//buffer.png, id=62, 785.93625pt x 151.3153pt>
+<./images//buffer.png, id=82, 785.93625pt x 151.3153pt>
 File: ./images//buffer.png Graphic file (type png)
 <use ./images//buffer.png>
 Package pdftex.def Info: ./images//buffer.png  used on input line 79.
 (pdftex.def)             Requested size: 345.0pt x 66.42424pt.
- [3 <./images//buffer.png>] (d:/Desktop\Relazione\Build\Relazione.aux)
+<./images//config.png, id=84, 350.81062pt x 95.6072pt>
+File: ./images//config.png Graphic file (type png)
+<use ./images//config.png>
+Package pdftex.def Info: ./images//config.png  used on input line 95.
+(pdftex.def)             Requested size: 227.62204pt x 62.03596pt.
+ [3 <./images//buffer.png>] [4 <./images//config.png>]
+<file.png, id=95, 343.2825pt x 169.38281pt>
+File: file.png Graphic file (type png)
+<use file.png>
+Package pdftex.def Info: file.png  used on input line 155.
+(pdftex.def)             Requested size: 227.62204pt x 112.31248pt.
+ [5 <d:/Desktop/Relazione/Build/file.png>] [6] (d:/Desktop\Relazione\Build\Relazione.aux)
 Package rerunfilecheck Info: File `Relazione.out' has not changed.
-(rerunfilecheck)             Checksum: A7B15BF7CF90948ECB795AF2552F5B99;445.
+(rerunfilecheck)             Checksum: D8B786E89AA9808D197DDA58B67D03B8;660.
  ) 
 Here is how much of TeX's memory you used:
- 5177 strings out of 479799
- 79686 string characters out of 2881522
- 376740 words of memory out of 3000000
- 22078 multiletter control sequences out of 15000+200000
+ 5203 strings out of 479799
+ 80026 string characters out of 2881522
+ 376738 words of memory out of 3000000
+ 22097 multiletter control sequences out of 15000+200000
  540192 words of font info for 46 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
- 66i,6n,72p,251b,381s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 66i,6n,72p,276b,382s stack positions out of 5000i,500n,10000p,200000b,50000s
  <C:\Users\samue\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\tcrm1000.pk><D:/Programmi/MiKTeX/fonts/type1/public/amsfonts/cm/cmbx10.pfb><D:/Programmi/MiKTeX/fonts/type1/public/amsfonts/cm/cmbx12.pfb><D:/Programmi/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><D:/Programmi/MiKTeX/fonts/type1/public/amsfonts/cm/cmr12.pfb><D:/Programmi/MiKTeX/fonts/type1/public/amsfonts/cm/cmr17.pfb><D:/Programmi/MiKTeX/fonts/type1/public/amsfonts/cm/cmti10.pfb><D:/Programmi/MiKTeX/fonts/type1/public/amsfonts/cm/cmtt10.pfb>
-Output written on d:/Desktop\Relazione\Build\Relazione.pdf (3 pages, 113097 bytes).
+Output written on d:/Desktop\Relazione\Build\Relazione.pdf (6 pages, 156114 bytes).
 PDF statistics:
- 101 PDF objects out of 1000 (max. 8388607)
- 13 named destinations out of 1000 (max. 500000)
- 70 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 138 PDF objects out of 1000 (max. 8388607)
+ 20 named destinations out of 1000 (max. 500000)
+ 112 words of extra memory for PDF output out of 10000 (max. 10000000)
 

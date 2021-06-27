@@ -10,6 +10,8 @@
 
 int DEBUG_ENABLE = 0;
 
+// readn writen, commenti, fix bash, -h
+
 int main(void) {
 
     printf("Avvio del server...\n\n");   
