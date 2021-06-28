@@ -21,7 +21,9 @@
     {                                                               \
         int connectedClients = -1;                                  \
         if (writen(pipeTask, &connectedClients, sizeof(int)) == -1) \
+        {                                                           \
             exit(errno);                                            \
+        }                                                           \
         handleDisconnect(fd);                                       \
         close(fd);                                                  \
         continue;                                                   \
@@ -32,7 +34,12 @@ void *handle_connection(void *pipeHandleClient) {
     // Prendo la pipe passata per argomento
     int *pipeTask = (int *) pipeHandleClient;
 
-    char *packetHeader = malloc(sizeof(int) * 2);
+    char *packetHeader;
+    if ((packetHeader = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
     char *packetPayload = NULL;
     int nread;
 
@@ -59,8 +66,16 @@ void *handle_connection(void *pipeHandleClient) {
         // leggo il paylod del pacchetto
         READ_PACKET(packetPayload, pipeTask[1], fileDescriptor, packetSize);
         
-        // Gestisco la richiesta in base al pacchetto ricevuto
-        handlePacket(packetID, packetSize, packetPayload, fileDescriptor);
+        // Gestisco la richiesta del client in base al pacchetto ricevuto. Se il server non riesce ad eseguire correttamente a rispondere al client 
+        // (per esempio la writen fallisce)
+        if (handlePacket(packetID, packetSize, packetPayload, fileDescriptor) == -1) {
+            // Disconnetto il client dal server
+            int connectedClients = -1;                                  
+            writen(pipeTask[1], &connectedClients, sizeof(int));           
+            handleDisconnect(fileDescriptor);                                       
+            close(fileDescriptor);  
+            continue;        
+        }
 
         // Attraverso la pipe mando indietro il fd al Thread Dispatcher
         if (writen(pipeTask[1], &fileDescriptor, sizeof(int)) == -1) {

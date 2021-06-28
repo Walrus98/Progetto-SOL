@@ -1,4 +1,4 @@
-ARGUMENT	= -f temp/mysock -w .,2 -R 2 -t 1000
+ARGUMENT	= -f temp/mysock -w . -R 2 -t 1000
 # ARGUMENT	= -f mysock -r Makefile -d prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-#include <pthread.h>
+#include <errno.h>
 
 #include <sys/types.h>
 #include <sys/syscall.h>
@@ -47,7 +47,7 @@ void *handle_signal(void *handlerArgument) {
     // Thread Dispatcher capisce il modo in cui deve terminare
     if (writen(pipeHandleConnection[1], &message, 10) == -1) {
         perror("ERRORE PIPE\n");
-        return NULL;
+        exit(errno);
     }
     
     // Chiudo la scrittura della pipe

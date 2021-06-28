@@ -67,7 +67,7 @@ int openConnection(const char* sockname, int msec, const struct timespec abstime
 
     if ((SOCKET_PATH = (char *) malloc(strlen(sockname) + 1)) == NULL) {
         perror("ERRORE: impossibile allocare memoria per SOCKET_PATH.");
-        return -1;
+        exit(errno);
     }
     strncpy(SOCKET_PATH, sockname, strlen(sockname) + 1);
     
@@ -141,12 +141,22 @@ int openFile(const char* pathname, int flags) {
     DEBUG(("O_LOCK: %d\n", olock));
 
     // Header
-    char *header = malloc(sizeof(int) * 2);
+    char *header;
+    if ((header = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));
 
     // Payload
-    char *payload = malloc(payloadLength);
+    char *payload;
+    if ((payload = (char *) malloc(payloadLength)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
     memcpy(payload, &pathLength, sizeof(int));
     memcpy(payload + sizeof(int), absolutePath, pathLength);
     memcpy(payload + sizeof(int) + pathLength, &ocreate, sizeof(int));
@@ -160,7 +170,14 @@ int openFile(const char* pathname, int flags) {
 
     // Response
     int response;
-    byte = read(SERVER_SOCKET, &response, sizeof(int));
+    byte = readn(SERVER_SOCKET, &response, sizeof(int));
+    if (byte == 0 || byte == -1) {
+        
+        free(payload);
+        free(header);
+
+        return -1;
+    }
 
     DEBUG(("RESPONSE\n"));
     DEBUG(("Leggo Response: %d byte letti\n", byte));
@@ -218,12 +235,21 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     DEBUG(("Path: %s\n", pathname));
 
     // Header
-    char *header = malloc(sizeof(int) * 2);
+    char *header;
+    if ((header = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));    
 
     // Payload
-    char *payload = malloc(payloadLength);
+    char *payload;
+    if ((payload = (char *) malloc(payloadLength)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     memcpy(payload, absolutePath, pathLength);
 
     byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
@@ -233,8 +259,20 @@ int readFile(const char* pathname, void** buf, size_t* size) {
     DEBUG(("Invio Payload: %d byte scritti\n", byte));
 
     // Response Header
-    char *headerResponse = malloc(sizeof(int));
-    byte = read(SERVER_SOCKET, headerResponse,  sizeof(int));
+    char *headerResponse;
+    if ((headerResponse = (char *) malloc(sizeof(int))) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
+    byte = readn(SERVER_SOCKET, headerResponse,  sizeof(int));
+    if (byte == 0 || byte == -1) {
+        free(headerResponse);
+        free(payload);
+        free(header);
+
+        return -1;
+    }
 
     DEBUG(("RESPONSE\n"));
     DEBUG(("Leggo Header Response: %d byte letti\n", byte));
@@ -258,8 +296,21 @@ int readFile(const char* pathname, void** buf, size_t* size) {
         return -1;
     }
     // Response Payload
-    char *payloadResponse = (char *) malloc(sizeof(char) * packetSize);
-    byte = read(SERVER_SOCKET, payloadResponse, packetSize);
+    char *payloadResponse;
+    if ((payloadResponse = (char *) malloc(sizeof(char) * packetSize)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
+    byte = readn(SERVER_SOCKET, payloadResponse, packetSize);
+    if (byte == 0 || byte == -1) {
+        free(payloadResponse);
+        free(headerResponse);
+        free(payload);
+        free(header);
+
+        return -1;
+    }
 
     DEBUG(("Leggo Payload Response: %d byte letti\n", byte));
     DEBUG(("Contenuto Payload Response: %s\n", payloadResponse));
@@ -296,19 +347,32 @@ int readNFiles(int N, const char* dirname) {
     int payloadLength = sizeof(int);
 
     // Header
-    char *header = malloc(sizeof(int) * 2);
+    char *header;
+    if ((header = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
     // Payload
-    char *payload = malloc(payloadLength);
+    char *payload;
+    if ((payload = (char *) malloc(payloadLength)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     memcpy(payload, &N, sizeof(int));
 
     write(SERVER_SOCKET, header, sizeof(int) * 2);
     write(SERVER_SOCKET, payload, payloadLength);        
 
     // Response Header
-    char *headerResponse = malloc(sizeof(int));
+    char *headerResponse;
+    if ((headerResponse = (char *) malloc(sizeof(int))) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
 
     read(SERVER_SOCKET, headerResponse,  sizeof(int));
     int packetSize = *((int *) headerResponse);
@@ -323,7 +387,11 @@ int readNFiles(int N, const char* dirname) {
     }
 
     // Response Payload
-    char *payloadResponse = (char *) malloc(sizeof(char) * packetSize);
+    char *payloadResponse;
+    if ((payloadResponse = (char *) malloc(sizeof(char) * packetSize)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
 
     read(SERVER_SOCKET, payloadResponse, packetSize);    
 
@@ -335,14 +403,22 @@ int readNFiles(int N, const char* dirname) {
         int pathLength = *((int *) currentPosition);
         currentPosition += sizeof(int); 
 
-        char *path = malloc(sizeof(char) * pathLength);
+        char *path;
+        if ((path = (char *) malloc(sizeof(char) * pathLength)) == NULL) {
+            perror("ERRORE: Impossibile allocare la memoria richiesta");
+            exit(errno);
+        }
         strncpy(path, currentPosition, pathLength);
         currentPosition += pathLength;
 
         int contentLength = *((int *) currentPosition);
         currentPosition += sizeof(int);
         
-        char *content = malloc(sizeof(char) * contentLength);
+        char *content;
+        if ((content = (char *) malloc(sizeof(char) * contentLength)) == NULL) {
+            perror("ERRORE: Impossibile allocare la memoria richiesta");
+            exit(errno);
+        }
         strncpy(content, currentPosition, contentLength);
         currentPosition += contentLength;
 
@@ -392,7 +468,12 @@ int writeFile(const char* pathname, const char* dirname) {
     fseek(file, 0, SEEK_SET);
     rewind(file);
 
-    char *content = (char *) malloc(sizeof(char) * textLength + 1);
+    char *content;
+    if ((content = (char *) malloc(sizeof(char) * textLength + 1)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
     int cont = 0;
 
     while (cont < textLength) {
@@ -416,12 +497,20 @@ int writeFile(const char* pathname, const char* dirname) {
     DEBUG(("Lunghezza Content: %d\n", contentLength));
     DEBUG(("Content: %s\n", content));
 
-    char *header = malloc(sizeof(int) * 2);
+    char *header;
+    if ((header = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
     // Payload
-    char *payload = malloc(payloadLength);
+    char *payload;
+    if ((payload = (char *) malloc(payloadLength)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     char *currentPosition = payload;
 
     memcpy(currentPosition, &pathLength, sizeof(int));
@@ -439,7 +528,13 @@ int writeFile(const char* pathname, const char* dirname) {
     
     // Response
     int response;
-    byte = read(SERVER_SOCKET, &response, sizeof(int));
+    byte = readn(SERVER_SOCKET, &response, sizeof(int));
+    if (byte == 0 || byte == -1) {
+        free(payload);
+        free(header);
+
+        return -1;
+    }
 
     DEBUG(("RESPONSE\n"));
     DEBUG(("Leggo Response: %d byte letti\n", byte));
@@ -492,12 +587,21 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
     DEBUG(("Content: %s\n", (char *) buf));
 
     // Header
-    char *header = (char *) malloc(sizeof(int) * 2);
+    char *header;
+    if ((header = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
+
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
     // Payload
-    char *payload = malloc(payloadLength);
+    char *payload;
+    if ((payload = (char *) malloc(payloadLength)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     char *currentPosition = payload;
 
     memcpy(currentPosition, &pathLength, sizeof(int));
@@ -515,8 +619,14 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 
     // Response
     int response;
-    byte = read(SERVER_SOCKET, &response, sizeof(int));
-    
+    byte = readn(SERVER_SOCKET, &response, sizeof(int));
+    if (byte == 0 || byte == -1) {
+        free(payload);
+        free(header);
+
+        return -1;
+    }
+
     DEBUG(("RESPONSE\n"));
     DEBUG(("Leggo Response: %d byte letti\n", byte));
     DEBUG(("Esito: %d\n", response));
@@ -561,12 +671,20 @@ int closeFile(const char* pathname) {
     DEBUG(("Lunghezza Path: %d\n", pathLength));
     DEBUG(("Path: %s\n", pathname));
 
-    char *header = malloc(sizeof(int) * 2);
+    char *header;
+    if ((header = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }    
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
     // payload
-    char *payload = malloc(payloadLength);
+    char *payload;
+    if ((payload = (char *) malloc(payloadLength)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     memcpy(payload, absolutePath, pathLength);
 
     byte = write(SERVER_SOCKET, header, sizeof(int) * 2);
@@ -576,8 +694,14 @@ int closeFile(const char* pathname) {
     
     // Response
     int response;
-    byte = read(SERVER_SOCKET, &response, sizeof(int));
-    
+    byte = readn(SERVER_SOCKET, &response, sizeof(int));
+    if (byte == 0 || byte == -1) {
+        free(payload);
+        free(header);
+
+        return -1;
+    }
+
     DEBUG(("RESPONSE\n"));
     DEBUG(("Leggo Response: %d byte letti\n", byte));
     DEBUG(("Esito: %d\n", response));
@@ -622,12 +746,20 @@ int removeFile(const char* pathname) {
     DEBUG(("Path: %s\n", pathname));
 
     // Header
-    char *header = malloc(sizeof(int) * 2);
+    char *header;
+    if ((header = (char *) malloc(sizeof(int) * 2)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     memcpy(header, &id, sizeof(int));
     memcpy(header + sizeof(int), &payloadLength, sizeof(int));        
 
     // payload
-    char *payload = malloc(payloadLength);
+    char *payload;
+    if ((payload = (char *) malloc(payloadLength)) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     memcpy(payload, &pathLength, sizeof(int));
     memcpy(payload + sizeof(int), absolutePath, pathLength);
 
@@ -638,7 +770,13 @@ int removeFile(const char* pathname) {
 
     // Response
     int response;
-    byte = read(SERVER_SOCKET, &response, sizeof(int));
+    byte = readn(SERVER_SOCKET, &response, sizeof(int));
+    if (byte == 0 || byte == -1) {
+        free(payload);
+        free(header);
+
+        return -1;
+    }
 
     DEBUG(("RESPONSE\n"));
     DEBUG(("Leggo Response: %d byte letti\n", byte));

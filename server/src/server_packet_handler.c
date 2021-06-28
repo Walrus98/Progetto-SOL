@@ -14,7 +14,7 @@
 #include "../include/server_storage.h"
 #include "../../core/include/utils.h"
 
-void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
+int handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
 
     int pathLength, contentLength, response, flagCreate, flagLock, nFiles;
     char *path, *buffer;
@@ -31,7 +31,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = open_file(fileDescriptor, path, flagCreate, flagLock);
             if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
-                exit(errno);
+                return -1;
             }
             break;
 
@@ -45,21 +45,29 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             // Se l'utente ha eseguito la open sul file
             if (content != NULL) {
-                char *buffer = malloc(sizeof(int) + contentLength);
+                char *buffer;
+                if ((buffer = (char *) malloc(sizeof(int) + contentLength)) == NULL) {
+                    perror("ERRORE: Impossibile allocare memoria richiesta.");
+                    exit(errno);
+                }
 
                 memcpy(buffer, &contentLength, sizeof(int));
                 memcpy(buffer + sizeof(int), content, contentLength);
 
                 if (writen(fileDescriptor, buffer, (sizeof(int) + contentLength)) == -1) {
-                    exit(errno);
+                    free(content);
+                    free(buffer);
+
+                    return -1;
                 }
 
                 free(content);
                 free(buffer);
+
             // Se l'utente non ha eseguito la open sul file
             } else {
                 if (writen(fileDescriptor, &contentLength, sizeof(int)) == -1) {
-                    exit(errno);
+                    return -1;
                 }
             }
             break;
@@ -73,11 +81,12 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             buffer = read_n_file(nFiles, &bufferSize);
 
             if (writen(fileDescriptor, &bufferSize, sizeof(int)) == -1) {
-                exit(errno);
+                return -1;
             }
             if (buffer != NULL) {
                 if (writen(fileDescriptor, buffer, bufferSize) == -1) {
-                    exit(errno);
+                    free(buffer);
+                    return -1;
                 }
                 free(buffer);
             }
@@ -93,7 +102,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = write_file(fileDescriptor, path, content);
             if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
-                exit(errno);
+                return -1;
             }
             break;
 
@@ -107,7 +116,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             
             response = write_file(fileDescriptor, path, content);
             if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
-                exit(errno);
+                return -1;
             }
             break;
 
@@ -118,7 +127,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
         
             response = close_file(fileDescriptor, path);
             if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
-                exit(errno);
+                return -1;
             } 
             break;
         
@@ -130,7 +139,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             response = remove_file(fileDescriptor, path);
             if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
-                exit(errno);
+                return -1;
             }
             break;
 
@@ -139,6 +148,7 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             break;       
     }
 
+    return 0;
 }
  
 void handleDisconnect(int fileDescriptor) {    

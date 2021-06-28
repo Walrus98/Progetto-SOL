@@ -61,22 +61,6 @@ static char *DIRNAME = NULL;
 
 int main(int argc, char *argv[]) {
 
-    // struct timespec abstime;
-    // clock_gettime(CLOCK_REALTIME, &abstime);
-    // abstime.tv_sec += 10;
-    // openConnection("mysock", 100, abstime);
-    // openFile("messaggio2", O_CREATE);
-    // openFile("test/messaggio1", O_CREATE);
-    // openFile("messaggio3", O_CREATE);
-    // sleep(5);
-    // openFile("messaggio3", O_CREATE);
-    // handle_write_files("messaggio2");
-    // handle_write_files("test/messaggio1");
-    // handle_remove_file("messaggio2");
-    // closeFile("messaggio2");
-
-    // return 0;
-
     if (argc == 1) {
         fprintf(stderr, "\nNessun argomento passato per parametro! Digita -h per vedere i comandi disponibili.\n");
         return EXIT_FAILURE;
@@ -126,14 +110,14 @@ void addArgument(char c, char *arg) {
     Argument *newArg;
     if ((newArg = (Argument *) malloc(sizeof(Argument))) == NULL) {
         perror("ERRORE: Impossibile allocare memoria per Argument.");
-        return;
+        exit(errno);
     }
 
     // Alloco nello heap il comando passato per parametro
     char *command;
     if ((command = (char *) malloc(sizeof(char))) == NULL) {
         perror("ERRORE: Impossibile allocare memoria per il comando.");
-        return;
+        exit(errno);
     }
 
     *command = c;
@@ -143,7 +127,7 @@ void addArgument(char c, char *arg) {
     if (arg != NULL) {
         if ((argument = (char *) malloc(sizeof(char) * strlen(arg) + 1)) == NULL) {
             perror("ERRORE: Impossibile allocare memoria per l'argomento.");
-            return;
+            exit(errno);
         }
         strncpy(argument, arg, strlen(arg) + 1);
     } 
@@ -214,7 +198,7 @@ void execute_arguments() {
             // Assegno a DIRNAME la directory che l'utente ha passato
             if ((DIRNAME = (char *) malloc(sizeof(char) * strlen(directory) + 1)) == NULL) {
                 perror("ERRORE: Impossibile allocare memoria per DIRNAME.");
-                return;
+                exit(errno);
             }
             strncpy(DIRNAME, directory, strlen(directory) + 1);
 
@@ -316,7 +300,10 @@ void handle_write_dir(char *optarg) {
 
         int length = strlen(token) + 1;
 
-        argument[size] = (char *) malloc(length);
+        if ((argument[size] = (char *) malloc(length)) == NULL) {
+            perror("ERRORE: Impossibile allocare memoria.");
+            exit(errno);
+        }
         strncpy(argument[size], token, length);
 
         token = strtok(NULL, ",");

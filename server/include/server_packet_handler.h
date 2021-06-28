@@ -11,7 +11,7 @@
 #define CLOSE_FILE 6
 #define REMOVE_FILE 7
 
-void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor);
+int handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor);
 
 void handleDisconnect(int fileDescriptor);
 

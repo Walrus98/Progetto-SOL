@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include "../../core/include/list_utils.h"
 #include "../include/pthread_utils.h"
@@ -18,7 +19,11 @@ void pushPacket(int fileDescriptor) {
     LOCK(&mutex);
 
     // ALloco sull'heap il descrittore del file, così da avere l'indirizzo di memoria condiviso fra più thread
-    int *fd = (int *) malloc(sizeof(int));
+    int *fd;
+    if ((fd = (int *) malloc(sizeof(int))) == NULL) {
+        perror("ERRORE: Impossibile allocare la memoria richiesta");
+        exit(errno);
+    }
     *fd = fileDescriptor;
 
     // Aggiungo la richiesta sul buffer

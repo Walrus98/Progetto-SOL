@@ -525,7 +525,7 @@ void *read_file(int fileDescriptor, char *filePath, int *bufferSize) {
     char *content;
     if ((content = (char *) malloc(*bufferSize)) == NULL) {
         perror("ERRORE: Impossibile allocare memoria.");
-        return NULL;
+        exit(errno);
     }
     // Copio il contenuto del file nel buffer
     strncpy(content, file->fileContent, *bufferSize);
@@ -588,7 +588,7 @@ char *read_n_file(int nFiles, int *bufferSize) {
     char *buffer;
     if ((buffer = (char *) malloc(*bufferSize)) == NULL) {
         perror("ERRORE: Impossibile allocare memoria.");
-        return NULL;
+        exit(errno);
     }
 
     // Resetto il buffer
