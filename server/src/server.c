@@ -8,9 +8,10 @@
 #include "../include/server_network.h"
 #include "../../core/include/utils.h"
 
+// Variabile globale per attivare la modalità di DEBUG del server
 int DEBUG_ENABLE = 0;
 
-// readn writen, commenti, fix bash, -h
+// fix bash, -h, test append, read_n
 
 int main(void) {
 
@@ -20,14 +21,14 @@ int main(void) {
     get_file_config();   
 
     // Creo il server storage
-    create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY); //REPLACEMENT_POLICY
+    create_storage(STORAGE_FILE_CAPACITY, STORAGE_CAPACITY);
 
-    // Stabilisco la connessione con i client
+    // Creo la connessione con i client
     create_connection(THREAD_WORKERS_AMOUNT);
 
+    // Libero la memoria a termine esecuzione del server
     destroy_storage();
-
-    free(SOCKET_FILE_PATH);
+    if (SOCKET_FILE_PATH != NULL) free(SOCKET_FILE_PATH);
 
     printf("\n");
       

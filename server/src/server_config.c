@@ -14,6 +14,7 @@ void get_file_config() {
 
     printf("Carico i file config:\n");
 
+    // Prendo il descrittore del file, se all'avvio del server non definisco CONFIG_PATH, prendo come config di default quello presente in build/config.txt
     FILE *configFile = NULL;
     if ((configFile = fopen(CONFIG_PATH, "r")) == NULL) {
         perror("ERRORE: apertura del file config.txt");
@@ -24,49 +25,70 @@ void get_file_config() {
     char buffer[STRING_SIZE];
     char config[STRING_SIZE];
     char value[STRING_SIZE];
-
+    
+    // Leggo riga per riga il file config
     while (fgets(buffer, STRING_SIZE, configFile)) {
+        // Parso la riga letta dal file config
         char *token = strtok(buffer, ":");
         while (token) { 
-
+            // Copio in config il testo che sta prima dei :
             strncpy(config, token, STRING_SIZE);
+            // Parso la stringa
             token = strtok(NULL, ":");
+            // Copio in value il testo che sta dopo i :
             strncpy(value, token, STRING_SIZE);
-
+            // Inserisco il carattere di terminazione, altrimenti la funzione isNumber non funziona correttamente
             value[strlen(value) - 1] = '\0';
 
+            // Il nome della configurazione
             printf("%s: ", config);
+            // Il valore passato come configurazione
             printf("%s\n", value);
             
+            // Se il config che sto leggendo corrisponde a storage_file_capacity
             if (strcmp(config, "storage_file_capacity") == 0) {
+                // Controllo se il valore passato dall'utente è un numero
                 if (!isNumber(value, &size)) {
                     fprintf(stderr, "ERRORE: Il valore passato dal config non è un intero!");
                     exit(-1);
                 }
+                // Assegno alla variabile globale il valore letto da config
                 STORAGE_FILE_CAPACITY = (size_t) size;
                 break;
             }
 
+            // Se il config che sto leggendo corrisponde a storage_capacity
             if (strcmp(buffer, "storage_capacity") == 0) { 
+                // Controllo se il valore passato dall'utente è un numero
                 if (!isNumber(value, &size)) {
                     fprintf(stderr, "ERRORE: Il valore passato dal config non è un intero!");
                     exit(-1);
                 }
+                // Assegno alla variabile globale il valore convertito in Megabyte
                 STORAGE_CAPACITY = (size_t) size * 1000 * 1000;
                 break;
             }
 
+            // Se il config che sto leggendo corrisponde a thread_workers_amount
             if (strcmp(buffer, "thread_workers_amount") == 0) { 
+                // Controllo se il valore passato dall'utente è un numero
                 if (!isNumber(value, &size)) {
                     fprintf(stderr, "ERRORE: Il valore passato dal config non è un intero!\n");
                     exit(-1);
                 }
+                // Assegno alla variabile globale il valore letto da config
                 THREAD_WORKERS_AMOUNT = (size_t) size;
                 break;
             }
                   
+            // Se il config che sto leggendo corrisponde a socket_file_path
             if (strcmp(buffer, "socket_file_path") == 0) {
-                SOCKET_FILE_PATH = (char *) malloc(sizeof(char) * strlen(value) + 1);
+                // Alloco nello heap la memoria necessaria per contenere il nome del file passato per file config
+                if ((SOCKET_FILE_PATH = (char *) malloc(sizeof(char) * strlen(value) + 1)) == NULL) {
+                    perror("ERRORE: Impossibile allocare la memoria richiesta");
+                    return;
+                }
+                // Copio il contenuto della stringa nella stringa appena creata
                 strncpy(SOCKET_FILE_PATH, value, strlen(value) + 1);
                 break;
             }
@@ -75,107 +97,12 @@ void get_file_config() {
         }
     }
 
-
-    
-    // // Variabile che contiene il numero parsato dalla stringa
-    // long size;
-    // // Buffer utilizzato per leggere il file config
-    // char buffer[STRING_BUFFER_SIZE];
-    // // Continuo a leggere finché la chiamata della funzione non ritorna NULL
-    // while (fgets(buffer, STRING_BUFFER_SIZE, configFile)) {
-
-    //     printf("%s", buffer);
-
-    //     // Parso la stringa caricata nel buffer
-    //     char *parsedString = strchr(buffer, ':');
-    //     // Visto che la stringa parsata oltre al valore interessato contiene : e uno spazio, sposto il puntatore della stringa di 2 posizioni in avanti
-    //     char *configValue = (parsedString + 2);
-    //     // Sostituisco il carattere di newline (ottenuto da fgets) con il carattere di terminazione
-    //     configValue[strlen(configValue) - 1] = '\0';
-
-    //     // configValue contiene quindi il valore parsato dalla stringa.
-        
-    //     // Rimuovo dalla stringa caricata nel buffer il valore, visto che è già salvato nella variabile configValue
-    //     buffer[strlen(buffer) - strlen(parsedString)] = '\0';
-        
-    //     // buffer contiene quindi il nome della configurazione
-    
-    //     // Confronto il nome della stringa con il nome della configurazione
-    //     if (strcmp(buffer, "storage_file_capacity") == 0) {
-    //         // Se il valore passato dal config è un numero
-    //         if (isNumber(configValue, &size)) {
-    //             // Assegno il valore alla variabile globale
-    //             STORAGE_FILE_CAPACITY = (size_t) size;
-    //             continue;
-    //         } 
-    //         fprintf(stderr, "ERRORE: storage_file_capacity vuole un intero!");
-    //         exit(EXIT_FAILURE);
-    //     }
-
-    //     // Confronto il nome della stringa con il nome della configurazione
-    //     if (strcmp(buffer, "storage_capacity") == 0) {
-    //         // Se il valore passato dal config è un numero
-    //         if (isNumber(configValue, &size)) {
-    //             // Assegno il valore alla variabile globale
-    //             STORAGE_CAPACITY = (size_t) size;
-    //             continue;
-    //         } 
-    //         fprintf(stderr, "ERRORE: storage_capacity vuole un intero!");
-    //         exit(EXIT_FAILURE);
-    //     }
-
-    //     // Confronto il nome della stringa con il nome della configurazione
-    //     if (strcmp(buffer, "replacement_policy") == 0) {
-    //         // Se il valore passato dal config è un numero
-    //         if (isNumber(configValue, &size)) {
-    //             // Assegno il valore alla variabile globale
-    //             REPLACEMENT_POLICY = (int) size;
-    //             continue;
-    //         } 
-    //         fprintf(stderr, "ERRORE: storage_capacity vuole un intero!");
-    //         exit(EXIT_FAILURE);
-    //     }
-
-    //     // Confronto il nome della stringa con il nome della configurazione
-    //     if (strcmp(buffer, "thread_workers_amount") == 0) {
-    //         // Se il valore passato dal config è un numero
-    //         if (isNumber(configValue, &size)) {
-    //             // Assegno il valore alla variabile globale
-    //             THREAD_WORKERS_AMOUNT = (size_t) size;
-    //             continue;
-    //         } 
-    //         fprintf(stderr, "ERRORE: thread_workers_amount vuole un intero!");
-    //         exit(EXIT_FAILURE);
-    //     }
-
-    //     // // Confronto il nome della stringa con il nome della configurazione
-    //     // if (strcmp(buffer, "socket_file_name") == 0) {
-
-    //     //     // Alloco la memoria per contenere la stringa passata dal config
-    //     //     if ((SOCKET_FILE_NAME = malloc(sizeof(char *) * strlen(buffer))) == NULL)  {
-    //     //         perror("ERRORE: impossibile allocare la memoria richiesta per la stringa socket_file_name");
-    //     //         exit(errno);
-    //     //     }
-
-    //     //     // Copio il contenuto della stringa nella variabile 
-    //     //     strncpy(SOCKET_FILE_NAME, configValue, STRING_BUFFER_SIZE);
-    //     //     continue;
-
-    //     //     fprintf(stderr, "ERRORE: mb_cache_size vuole un intero!");
-    //     // }
-    // }
     printf("\n");
 
-    
     // Chiudo il descrittore del file
     if (fclose(configFile) != 0) {
         perror("ERRORE: chiusura del file config.txt");
         exit(errno);
     }   
-
-    // printf("Valori ottenuti:\n");
-    // printf("%ld\n", THREAD_WORKERS_AMOUNT);
-    // printf("%ld\n", STORAGE_SIZE);
-    // printf("%s\n", SOCKET_FILE_NAME);
 
 }

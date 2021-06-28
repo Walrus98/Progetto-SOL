@@ -12,6 +12,7 @@
 
 #include "../include/server_packet_handler.h"
 #include "../include/server_storage.h"
+#include "../../core/include/utils.h"
 
 void handlePacket(int packetID, int packetSize, char *payload, int fileDescriptor) {
 
@@ -29,7 +30,9 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             printf("SERVER: Ricevuta una richiesta di open sul file \"%s\"\n", path);
 
             response = open_file(fileDescriptor, path, flagCreate, flagLock);
-            write(fileDescriptor, &response, sizeof(int));
+            if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
+                exit(errno);
+            }
             break;
 
         case READ_FILE:
@@ -47,13 +50,17 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
                 memcpy(buffer, &contentLength, sizeof(int));
                 memcpy(buffer + sizeof(int), content, contentLength);
 
-                write(fileDescriptor, buffer, (sizeof(int) + contentLength));
+                if (writen(fileDescriptor, buffer, (sizeof(int) + contentLength)) == -1) {
+                    exit(errno);
+                }
 
                 free(content);
                 free(buffer);
             // Se l'utente non ha eseguito la open sul file
             } else {
-                write(fileDescriptor, &contentLength, sizeof(int));
+                if (writen(fileDescriptor, &contentLength, sizeof(int)) == -1) {
+                    exit(errno);
+                }
             }
             break;
 
@@ -65,9 +72,13 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
 
             buffer = read_n_file(nFiles, &bufferSize);
 
-            write(fileDescriptor, &bufferSize, sizeof(int));
+            if (writen(fileDescriptor, &bufferSize, sizeof(int)) == -1) {
+                exit(errno);
+            }
             if (buffer != NULL) {
-                write(fileDescriptor, buffer, bufferSize);
+                if (writen(fileDescriptor, buffer, bufferSize) == -1) {
+                    exit(errno);
+                }
                 free(buffer);
             }
             break;
@@ -81,7 +92,9 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             printf("SERVER: Ricevuta una richiesta di write sul file \"%s\"\n", path);
 
             response = write_file(fileDescriptor, path, content);
-            write(fileDescriptor, &response, sizeof(int));
+            if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
+                exit(errno);
+            }
             break;
 
         case APPEND_TO_FILE:
@@ -93,7 +106,9 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             printf("SERVER: Ricevuta una richiesta di append sul file \"%s\"\n", path);
             
             response = write_file(fileDescriptor, path, content);
-            write(fileDescriptor, &response, sizeof(int));
+            if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
+                exit(errno);
+            }
             break;
 
         case CLOSE_FILE:       
@@ -102,7 +117,9 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             printf("SERVER: Ricevuta una richiesta di close sul file \"%s\"\n", path);
         
             response = close_file(fileDescriptor, path);
-            write(fileDescriptor, &response, sizeof(int)); 
+            if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
+                exit(errno);
+            } 
             break;
         
         case REMOVE_FILE:
@@ -112,7 +129,9 @@ void handlePacket(int packetID, int packetSize, char *payload, int fileDescripto
             printf("SERVER: Ricevuta una richiesta di remove sul file \"%s\"\n", path);
 
             response = remove_file(fileDescriptor, path);
-            write(fileDescriptor, &response, sizeof(int));
+            if (writen(fileDescriptor, &response, sizeof(int)) == -1) {
+                exit(errno);
+            }
             break;
 
         default:

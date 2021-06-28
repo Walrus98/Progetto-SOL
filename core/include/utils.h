@@ -28,4 +28,8 @@ int DEBUG_ENABLE;
 
 int isNumber(const char *s, long *n);
 
+int readn(long fd, void *buf, size_t size);
+
+int writen(long fd, void *buf, size_t size);
+
 #endif

@@ -13,76 +13,23 @@
 #include "../include/server_network_worker.h"
 #include "../include/server_network_handler.h"
 #include "../include/server_packet_handler.h"
+#include "../../core/include/utils.h"
 
-#define READ_PACKET(buffer, pipeTask, fd, size)             \
-    nread = readn(fd, buffer, size);                        \
-    if (nread == 0 || nread == -1)                          \
-    {                                                       \
-        int connectedClients = -1;                          \
-        write(pipeTask, &connectedClients, sizeof(int));    \
-        handleDisconnect(fd);                               \
-        close(fd);                                          \
-        continue;                                           \
+#define READ_PACKET(buffer, pipeTask, fd, size)                     \
+    nread = readn(fd, buffer, size);                                \
+    if (nread == 0 || nread == -1)                                  \
+    {                                                               \
+        int connectedClients = -1;                                  \
+        if (writen(pipeTask, &connectedClients, sizeof(int)) == -1) \
+            exit(errno);                                            \
+        handleDisconnect(fd);                                       \
+        close(fd);                                                  \
+        continue;                                                   \
     }
-
-/* Read "n" bytes from a descriptor */
-
-/** Evita letture parziali
- *
- *   \retval -1   errore (errno settato)
- *   \retval  0   se durante la lettura da fd leggo EOF
- *   \retval size se termina con successo
- */
-static inline int readn(long fd, void *buf, size_t size) {
-    size_t left = size;
-    int r;
-    char *bufptr = (char *)buf;
-    while (left > 0) {
-        if ((r = read((int)fd, bufptr, left)) == -1) {
-            if (errno == EINTR) {
-                continue;
-            }
-            return -1;
-        }
-        // EOF
-        if (r == 0) {
-            return 0; 
-        }        
-        left -= r;
-        bufptr += r;
-    }
-
-    return size;
-}
-
-/** Evita scritture parziali
- *
- *   \retval -1   errore (errno settato)
- *   \retval  0   se durante la scrittura la write ritorna 0
- *   \retval  1   se la scrittura termina con successo
- */
-static inline int writen(long fd, void *buf, size_t size) {
-    size_t left = size;
-    int r;
-    char *bufptr = (char *) buf;
-    while (left > 0) {
-        if ((r = write((int)fd, bufptr, left)) == -1) {
-            if (errno == EINTR)
-                continue;
-            return -1;
-        }
-        // EOF
-        if (r == 0) {
-            return 0;
-        }
-        left -= r;
-        bufptr += r;
-    }
-    return 1;
-}
 
 void *handle_connection(void *pipeHandleClient) {
 
+    // Prendo la pipe passata per argomento
     int *pipeTask = (int *) pipeHandleClient;
 
     char *packetHeader = malloc(sizeof(int) * 2);
@@ -90,8 +37,10 @@ void *handle_connection(void *pipeHandleClient) {
     int nread;
 
     while (CONNECTION == 1) {
+        // Prendo il task dalla lista di fd
         int fileDescriptor = popPacket();
         
+        // Se il fd è -1, allora devo terminare l'esecuzione del thread
         if (fileDescriptor == -1) {
             break;
         }
@@ -102,16 +51,21 @@ void *handle_connection(void *pipeHandleClient) {
         int packetSize = *((int *) packetHeader + 1);
 
         // Alloco la dimensione del buffer payload
-        packetPayload = malloc(packetSize);
+        if ((packetPayload = (char *) malloc(packetSize)) == NULL) {
+            perror("ERRORE: Impossibile allocare la memoria richiesta");
+            exit(errno);
+        }
 
         // leggo il paylod del pacchetto
         READ_PACKET(packetPayload, pipeTask[1], fileDescriptor, packetSize);
         
-        // Gestisco il pacchetto ricevuto
+        // Gestisco la richiesta in base al pacchetto ricevuto
         handlePacket(packetID, packetSize, packetPayload, fileDescriptor);
 
         // Attraverso la pipe mando indietro il fd al Thread Dispatcher
-        write(pipeTask[1], &fileDescriptor, sizeof(int));     
+        if (writen(pipeTask[1], &fileDescriptor, sizeof(int)) == -1) {
+            exit(errno);
+        }     
   
         // Libero il payload allocato precedentemente
         free(packetPayload);

@@ -24,8 +24,6 @@ void pushPacket(int fileDescriptor) {
     // Aggiungo la richiesta sul buffer
     add_tail(&packetBuffer, fd);
 
-    // printf("HO AGGIUNTO NELLA CODA %d\n", *fd);
-
     // Segnalo ai thread worker che c'è un elemento all'interno del buffer
     SIGNAL(&cond);
 
@@ -39,22 +37,21 @@ int popPacket() {
     // Acquisco la lock sul buffer
     LOCK(&mutex);
 
-    // Se il buffer non contiene nessuna richiesta
     int *fd;
+    // Metto in attesa il thread worker finché non riceve un task dalla lista thread safe o la connessione non è settata a 0
     while ((fd = ((int *) remove_head(&packetBuffer))) == NULL && CONNECTION == 1) {
         // Metto il thread in stato di wait
         WAIT(&cond, &mutex);
     }
 
-    if (CONNECTION == 0) { // fd == NULL
+    // Se la connessione è 0, rilascio la lock e restituisco -1, così termino il Thread Worker
+    if (CONNECTION == 0) {
         UNLOCK(&mutex);
         return -1;
     }
     
     // Assegno il contenuto della variabile condivisa a fileDescriptor
     int fileDescriptor = *fd;
-
-    // printf("HO PRESO DALLA CODA %d\n", fileDescriptor);
 
     // Cancello il descrittore del file dal buffer
     free(fd);

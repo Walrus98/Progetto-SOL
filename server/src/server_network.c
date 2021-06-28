@@ -62,58 +62,72 @@ void create_connection(size_t poolSize) {
         JOIN(threadWorker[i]);
         printf("SERVER: Termino l'esecuzione del Thread Worker\n");
     }
-
+    // Libero la memoria
     free(threadWorker);
 }
 
+// Creo il Thread Signal Handler
 static pthread_t create_thread_signal(int pipeHandleConnection[], sigset_t blockMask) {
 
+    // Creo una struct per passare gli argomenti alla funzione pthread_create
     SignalHandlerArg handlerArgument;
+    // Pipe per svegliare il Thread Dispatcher quando deve terminare
     handlerArgument.pipeHandleConnection[0] = pipeHandleConnection[0];
     handlerArgument.pipeHandleConnection[1] = pipeHandleConnection[1];
+    // Maschera dei segnali
     handlerArgument.blockMask = blockMask;
     
+    // Creo il Thread Signal Handler
     pthread_t threadSignalHandler;
-
     if (pthread_create(&threadSignalHandler, NULL, &handle_signal, &handlerArgument) != 0) {
         fprintf(stderr, "ERRORE: impossibile creare il Thread Signal Handler\n");
         exit(EXIT_FAILURE);
     }
 
+    // Restituisco il thread appena creato
     return threadSignalHandler;
 }
 
+// Creo il Thread Dispatcher
 static pthread_t create_thread_dispatcher(int pipeHandleConnection[], int pipeHandleClient[]) {
 
+    // Creo una struct per passare gli argomenti alla funzione pthread_create
     DispatcherArg dispatcherArgument;
+    // Pipe per svegliare il Thread Dispatcher quando deve terminare
     dispatcherArgument.pipeHandleConnection[0] = pipeHandleConnection[0];
     dispatcherArgument.pipeHandleConnection[1] = pipeHandleConnection[1];
+    // Pipe per ricevere il file descriptor del client quando il Thread Worker ha terminato il Task
     dispatcherArgument.pipeHandleClient[0] = pipeHandleClient[0];
     dispatcherArgument.pipeHandleClient[1] = pipeHandleClient[1];
 
+    // Creo il Thread Dispatcher
     pthread_t threadDispatcher;
-
     if (pthread_create(&threadDispatcher, NULL, &dispatch_connection, &dispatcherArgument) != 0) {
         fprintf(stderr, "ERRORE: impossibile creare il Thread Dispatcher\n");
         exit(EXIT_FAILURE);
     }
+
+    // Restituisco il thread appena creato
     return threadDispatcher;
 }
 
 static pthread_t *create_thread_pool(int pipeHandleClient[], size_t poolSize) {
 
+    // Creo una pool di thread
     pthread_t *threadPool;
-
     if ((threadPool = (pthread_t *) malloc(sizeof(pthread_t) * poolSize)) == NULL) {
         perror("ERRORE: impossibile allocare la memoria richiesta per la creazione della Thread Pool");
 		exit(errno);
 	}
 
+    // Inizializzo i Thread appena creati
     for (int i = 0; i < poolSize; i++) {
         if (pthread_create(&threadPool[i], NULL, &handle_connection, (void *) pipeHandleClient) != 0) {
             fprintf(stderr, "ERRORE: impossibile creare la Thread Pool\n");
             exit(EXIT_FAILURE);
         }
     }
+    
+    // Restituisco la pool di Thread Worker
     return threadPool;
 }
