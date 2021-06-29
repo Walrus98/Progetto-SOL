@@ -401,7 +401,7 @@ void print_storage() {
 void print_stats() {
     printf("\n");
     printf("SERVER: Numero massimo di file memorizzati: %d\n", TIME_FIFO);
-    printf("SERVER: Dimensione massima in MBytes raggiunta: %f MB\n", (float) STORAGE_SIZE_MAX / 1000 / 1000);
+    printf("SERVER: Dimensione massima in MBytes raggiunta: %f MB\n", (float) STORAGE_SIZE_MAX / 1024 / 1024);
     printf("SERVER: Numero di volte in cui l'algoritmo di rimpiazzamento è stato eseguito: %d\n", REPLACEMENT_FREQUENCY);
     printf("SERVER: File contenuti nello storage:\n");
     print_storage();
@@ -556,6 +556,9 @@ char *read_n_file(int nFiles, int *bufferSize) {
         return NULL;
     }
 
+    // Prendo la lock globale su tutta la mappa, così gli altri Thread non possono creare nuovi file
+    LOCK(&STORAGE_LOCK);
+
     int pathLength = 0;
     int contentLength = 0;
     int cont = 0;
@@ -575,8 +578,7 @@ char *read_n_file(int nFiles, int *bufferSize) {
                 contentLength += strlen(file->fileContent) + 1;
                 // Aggiorno la dimensione di bufferSize con il valore appena calcolato
                 *bufferSize += pathLength + contentLength + (sizeof(int) * 2);
-                // Rilascio la lock sul file
-                UNLOCK(file->fileLock);
+
                 cont++;
             }
             curr = curr->next;
@@ -610,9 +612,7 @@ char *read_n_file(int nFiles, int *bufferSize) {
         for (curr = bucket; curr != NULL && cont < nFiles; ) {
             File *file = (File *) curr->key;
             if (file != NULL) {
-                // Acquisco la lock sul file
-                LOCK(file->fileLock);
-
+                
                 // Inserisco nel buffer la lunghezza del filePath
                 pathLength = strlen(file->filePath) + 1;
                 memcpy(buffer, &pathLength, sizeof(int));
@@ -633,11 +633,16 @@ char *read_n_file(int nFiles, int *bufferSize) {
 
                 // Rilascio la lock
                 UNLOCK(file->fileLock);
+                
                 cont++;
             }
             curr = curr->next;
         }
     }
+    
+    // Rilascio la lock globale sulla mappa
+    UNLOCK(&STORAGE_LOCK);
+
     return currentBuffer;
 }
 

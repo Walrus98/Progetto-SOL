@@ -11,9 +11,18 @@
 // Variabile globale per attivare la modalità di DEBUG del server
 int DEBUG_ENABLE = 0;
 
-// fix bash, -h, test append, read_n
+int main(int argc, char *argv[]) {
 
-int main(void) {
+    if (argc != 2) {
+        fprintf(stderr, "Numero di argomenti non valido!\n");
+        return EXIT_FAILURE;
+    }
+
+    if ((CONFIG_PATH = (char *) malloc(strlen(argv[1]) + 1)) == NULL) {
+        perror("ERRORE: Impossibile allocare memoria richiesta.");
+        return EXIT_FAILURE;
+    }
+    strncpy(CONFIG_PATH, argv[1], strlen(argv[1]) + 1);
 
     printf("Avvio del server...\n\n");   
 
@@ -29,6 +38,8 @@ int main(void) {
     // Libero la memoria a termine esecuzione del server
     destroy_storage();
     if (SOCKET_FILE_PATH != NULL) free(SOCKET_FILE_PATH);
+
+    free(CONFIG_PATH);
 
     printf("\n");
       

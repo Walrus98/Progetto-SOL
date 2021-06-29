@@ -1,4 +1,4 @@
-ARGUMENT	= -f temp/mysock -w . -R 2 -t 1000
+ARGUMENT	= -f temp/mysock -w .,3 -R 2 -t 1000 -d prova/ -p
 # ARGUMENT	= -f mysock -r Makefile -d prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g
@@ -34,37 +34,7 @@ client: build-client
 
 server: build-server
 	clear
-	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/server
-
-# ================================= TEST1 =================================
-
-test1: build-client build-server-test1 clean
-	-rm temp/mysock
-	cp -r * /mnt/d/Desktop/Progetto-SOL/
-
-build-server-test1: $(TARGETS_SERVER)
-	-rm temp/mysock
-	$(CC) $(CFLAGS) -DCONFIG_PATH=../build/config-test1.txt -pthread build/obj/server/*.o build/obj/core/*.o -o build/server-test1
-
-server-test1: build-server-test1
-	clear
-	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/server-test1
-
-# ================================= TEST2 =================================
-
-test2: build-client build-server-test2 clean
-	-rm temp/mysock
-	cp -r * /mnt/d/Desktop/Progetto-SOL/
-
-build-server-test2: $(TARGETS_SERVER)
-	-rm temp/mysock
-	$(CC) $(CFLAGS) -DCONFIG_PATH=build/config-test2.txt -pthread build/obj/server/*.o build/obj/core/*.o -o build/server-test2
-
-server-test2: build-server-test2
-	clear
-	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/server-test2
-
-# ================================= CLIENT =================================
+	valgrind --leak-check=full --track-origins=yes --tool=memcheck build/server build/config.txt
 
 client_network.o:
 	$(CC) $(CFLAGS) -c client/src/client_network.c -o build/obj/client/$@

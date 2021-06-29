@@ -6,10 +6,6 @@
 #include "../../core/include/utils.h"
 #include "../include/server_config.h"
 
-#ifndef CONFIG_PATH
-#define CONFIG_PATH "build/config.txt"
-#endif
-
 void get_file_config() {
 
     printf("Carico i file config:\n");
@@ -65,7 +61,7 @@ void get_file_config() {
                     exit(-1);
                 }
                 // Assegno alla variabile globale il valore convertito in Megabyte
-                STORAGE_CAPACITY = (size_t) size * 1000 * 1000;
+                STORAGE_CAPACITY = (size_t) size * 1024 * 1024;
                 break;
             }
 

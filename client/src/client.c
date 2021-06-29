@@ -60,7 +60,7 @@ static int TIME = 0;
 static char *DIRNAME = NULL;
 
 int main(int argc, char *argv[]) {
-
+    
     if (argc == 1) {
         fprintf(stderr, "\nNessun argomento passato per parametro! Digita -h per vedere i comandi disponibili.\n");
         return EXIT_FAILURE;
@@ -363,7 +363,7 @@ void handle_read_files(char *optarg) {
 
     char *token = strtok(optarg, ",");
     while (token) {
-
+        
         if (openFile(token, NO_ARG) == -1) {
             perror("ERRORE: Richiesta di apertura di un File");
             return;
@@ -371,8 +371,10 @@ void handle_read_files(char *optarg) {
 
         if (readFile(token, &buffer, &bufferSize) == 0) {
 
-            if (DIRNAME != NULL) {
-                write_file_directory(DIRNAME, token, (char *) buffer);
+            if (DIRNAME != NULL) {                
+                char temp[strlen(token) + 1];
+                strncpy(temp, token, strlen(token) + 1);
+                write_file_directory(DIRNAME, temp, (char *) buffer);
             }
 
             free(buffer);
@@ -422,8 +424,33 @@ void handle_remove_file(char *optarg) {
 }
 
 void handle_help_commands() {
-    printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n");
-    printf("-w dirname : invia al server i file nella cartella 'dirname'\n");
+    printf("-h : stampa la lista di tutte le opzioni accettate dal client e termina immediatamente\n\n");
+
+    printf("-f filename : specifica il nome del socket AF_UNIX a cui connettersi\n\n");
+
+    printf("-w dirname[,n=0] : invia al server i file nella cartella ‘dirname’, ovvero effettua una richiesta\n");
+    printf("di scrittura al server per i file. Se la directory ‘dirname’ contiene altre directory, queste vengono visitate\n");
+    printf("ricorsivamente fino a quando non si leggono ‘n‘ file; se n=0 (o non è specificato) non c’è un limite superiore al\n");
+    printf("numero di file da inviare al server (tuttavia non è detto che il server possa scriverli tutti)\n\n");
+
+    printf("-W file1[,file2] : lista di nomi di file da scrivere nel server separati da ‘,’\n\n");
+
+    printf("-r file1[,file2] : lista di nomi di file da leggere dal server separati da ‘,’\n\n");
+
+    printf("-R n : tale opzione permette di leggere ‘n’ file qualsiasi attualmente memorizzati nel server; se n=0 (o non è specificato)\n");
+    printf("allora vengono letti tutti i file presenti nel server\n\n");
+
+    printf("-d dirname : cartella in memoria secondaria dove scrivere i file letti dal server con l’opzione ‘-r’ o ‘-R’.\n");
+    printf("L’opzione -d va usata congiuntamente a ‘-r’ o ‘-R’, altrimenti viene generato un errore; Se si utilizzano le\n");
+    printf("opzioni ‘-r’ o ‘-R’senza specificare l’opzione ‘-d’ i file letti non vengono memorizzati sul disco\n\n");
+    
+    printf("-t time : tempo in millisecondi che intercorre tra l’invio di due richieste successive al server (se non\n");    
+    printf("specificata si suppone -t 0, cioè non c’è alcun ritardo tra l’invio di due richieste consecutive);\n\n");
+
+    printf("-c file1[,file2] : lista di file da rimuovere dal server se presenti;\n\n");
+
+    printf("-p : abilita le stampe sullo standard output per ogni operazione. Le stampe associate alle varie operazioni\n");
+    printf("riportano almeno le seguenti informazioni: tipo di operazione, file di riferimento, esito e dove è rilevante i bytes letti o scritti.\n\n");
 }
 
 // ====================

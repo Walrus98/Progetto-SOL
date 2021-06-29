@@ -55,9 +55,9 @@ int readn(long fd, void *buf, size_t size) {
 
 /** Evita scritture parziali
  *
- *   \retval -1   errore (errno settato)
- *   \retval  0   se durante la scrittura la write ritorna 0
- *   \retval  1   se la scrittura termina con successo
+ *   \retval -1    errore (errno settato)
+ *   \retval  0    se durante la scrittura la write ritorna 0
+ *   \retval size  se la scrittura termina con successo
  */
 int writen(long fd, void *buf, size_t size) {
     size_t left = size;
@@ -76,5 +76,5 @@ int writen(long fd, void *buf, size_t size) {
         left -= r;
         bufptr += r;
     }
-    return 1;
+    return size;
 }
