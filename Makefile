@@ -1,5 +1,5 @@
 ARGUMENT	= -f temp/mysock -w .,3 -R 2 -t 1000 -d prova/ -p
-
+# ARGUMENT	= -f mysock -r Makefile -d prova/ -p
 CC			= gcc
 CFLAGS		= -pedantic -Wall -g
 
@@ -14,6 +14,7 @@ TARGETS_SERVER	= server.o server_config.o server_storage.o server_network.o					
 
 all: build-client build-server clean
 	-rm temp/mysock
+	cp -r * /mnt/d/Desktop/Progetto-SOL/
 
 build-client: $(TARGETS_CLIENT)
 	$(CC) $(CFLAGS) build/obj/client/*.o build/obj/core/*.o -o build/client
@@ -79,22 +80,3 @@ server_signal_handler.o:
 
 server_packet_handler.o:
 	$(CC) $(CFLAGS) -c server/src/server_packet_handler.c -o build/obj/server/$@
-
-
-# all: $(TARGETS)
-# 	$(CC) $^
-
-# main.o: main.c utils.h
-# $(CC) $(CFLAGS) $(INCLUDES) -c $<
-# $(CC) $(CFLAGS) $(INCLUDES) -c main.c
-
-# utils.o: utils.c utils.h
-# $(CC) $(CFLAGS) $(INCLUDES) -c main.c
-
-# %.o: %.c %.h
-
-# test:
-# 	./a.out input.txt output.txt
-
-# clear:
-# 	-rm a.out
