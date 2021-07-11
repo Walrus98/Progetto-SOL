@@ -16,14 +16,14 @@
 \tableofcontents
 
 \section{Introduzione}
-Come previsto dalle indicazioni dell'esame, il progetto di seguito è stato sviluppato nella versione ridotta e semplificata poiché la parte facoltativa non è 
+Come previsto dalle indicazioni dell'esame, il progetto di seguito è stato sviluppato nella versione ridotta e semplificata, poiché la parte facoltativa non è 
 prevista nell'appello di Luglio 2021. Il codice sorgente e i vari file necessari per il corretto funzionamento del programma sono stati caricati in una repository
 pubblica su Github. È possibile accedere alla repository del progetto attraverso il seguente link: \url{https://github.com/Walrus98/Progetto-SOL}, così da poter 
 visualizzare il codice sorgente e tutti i commit effettuati. \\ Le librerie utilizzate nel progetto sono le seguenti:
 \begin{itemize}
     \itemsep 0em 
     \item \textbf{icl\_hash.h}, libreria vista a lezione utilizzata per la creazione di mappe.
-    \item \textbf{list\_utils.h}, libreria realizzata dal sottoscritto utilizzata per la creazione di liste monodirezionali.
+    \item \textbf{list\_utils.h}, libreria realizzata da me medesimo utilizzata per la creazione di liste monodirezionali.
 \end{itemize}
 
 \subsection{Makefile}
@@ -34,25 +34,22 @@ L'intero progetto può essere compilato ed eseguito attraverso le seguenti regol
     \item \textbf{all}: viene chiamato per default dal comando \textbf{make}, compila il client e il server attraverso le regole \textbf{build-client} e \textbf{build-server}. 
     \item \textbf{build-client}: compila tutti i file del client e genera l'eseguile.
     \item \textbf{build-server}: compila tutti i file del server e genera l'eseguile.
-    \item \textbf{build-server-test1}: compila tutti i file del server con i config richiesti da test1 e genera l'eseguile.
-    \item \textbf{build-server-test2}: compila tutti i file del server con i config richiesti da test2 e genera l'eseguile.
     \item \textbf{client}: esegue un clear della console e successivamente avvia il client con valgrind.
     \item \textbf{server}: esegue un clear della console e successivamente avvia il server con valgrind.
-    \item \textbf{server-test1}: esegue un clear della console e successivamente avvia il server con i config richiesti da test1 con valgrind.
-    \item \textbf{server-test2}: esegue un clear della console e successivamente avvia il server con i config richiesti da test2 con valgrind.
     \item \textbf{clean}: rimuove tutti i file object generati dalle regole elencate precedentemente.
 \end{itemize}
 
 \subsection{Test case}
-Nel progetto è presente una cartella di nome \textit{"tests"} che al suo interno contiene i due file bash richiesti per testare il corretto
-funzionamento del programma. I due script una volta avviati compilano in maniera autonoma client e server tramite le regole del Makefile sopra citate. Successivamente,
-in base al tipo di file bash avviato, viene eseguito il server con il propio file config opportuno e un insieme di client che eseguono differenti richieste sul server.
+Nel progetto è presente una cartella di nome \textit{"tests"}, che al suo interno contiene i due file bash richiesti per testare il corretto
+funzionamento del programma. I due script, una volta avviati, compilano in maniera autonoma client e server tramite le regole del Makefile sopra citate. Successivamente,
+in base al tipo di file bash avviato, vengono eseguiti il server e un insieme di client che eseguono differenti richieste sul server. 
+Per indicare al server dove si trova il file config che deve leggere, è necessario passare come argomento il path del file config al server.
 
 \section{Funzionamento del programma}
 
 \subsection{API}
 Per potersi interfacciare con il server, il client include all'interno del suo codice un file header chiamato \textbf{client\_network.h}. Quest'ultimo possiede l'elenco di tutti i metodi
-richiesti dal testo dell'esame e permette quindi di per poter inviare e ricevere messaggi con il server attraverso l'utilizzo di un protocollo. Tutti i metodi del file header sono 
+richiesti dal testo dell'esame e permette, quindi, di poter inviare e ricevere messaggi con il server attraverso l'utilizzo di un protocollo. Tutti i metodi del file header sono 
 implementati nella classe \textbf{client\_network.c}.
 
 \subsection{Protocollo}
@@ -80,10 +77,10 @@ Il \textbf{BufferPayload} ha una dimensione variabile e contiene tutti i dati ch
     Figure 1: Stuttura del buffer di invio di messaggi al server
 \end{center}
 
-Poichè il client ogni volta che invia un messaggio al server si mette in attesa di ricevere un messaggio di risposta da quest'ultimo (quindi i pacchetti da parte del 
-client vengono inviati in maniera sequenziale), il server non ha bisogno di inviare al client l'id del pacchetto perché il client conosce già il tipo di pacchetto 
+Poichè il client, ogni volta che invia un messaggio al server, si mette in attesa di ricevere un messaggio di risposta da quest'ultimo (quindi i pacchetti da parte del 
+client vengono inviati in maniera sequenziale), il server non ha bisogno di inviare al client l'id del pacchetto, perché il client conosce già il tipo di pacchetto 
 che sta per ricevere. Di conseguenza, il server invia prima la dimensione del pacchetto, poi il contenuto del buffer che vuole inviare. \\ In alcuni casi, se il server
-non deve inviare nessun dato se non l'esito della richiesta che il client ha inviato, il server invia semplicemente un intero come messaggio di risposta:
+non deve inviare nessun dato, eccetto l'esito della richiesta che il client ha inviato, il server invia semplicemente un intero come messaggio di risposta:
 nel caso di successo, il server invia 0, in caso di errore un numero negativo. 
 
 \section{Server}
